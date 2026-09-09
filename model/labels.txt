@@ -1,0 +1,5 @@
+Fungal_infections
+Healthy
+Hypersensitivity_allergic_dermatosis
+mange
+ringworm

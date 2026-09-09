@@ -1,0 +1,23 @@
+# Python / Flask
+venv/
+__pycache__/
+*.pyc
+.env
+instance/
+
+# Flutter
+**/build/
+.dart_tool/
+.flutter-plugin-dependencies
+*.iml
+.idea/
+
+# Android
+**/android/.gradle/
+**/android/app/debug/
+local.properties
+
+# OS/editor junk
+.DS_Store
+.vscode/
+uploads/

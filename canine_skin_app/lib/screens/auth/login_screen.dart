@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_logo.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../home/home_screen.dart';
@@ -19,6 +21,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _handleLogin() async {
     setState(() {
@@ -65,67 +74,123 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      body: SafeArea(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const Center(child: AppLogo()),
+              const SizedBox(height: 16),
+              const Text(
+                "Welcome Back",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                "Sign in to continue to DermPaw",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textGrey, fontSize: 14),
+              ),
+              const SizedBox(height: 32),
+
+              const Text("Email", style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
               TextField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: "Email"),
+                decoration: const InputDecoration(hintText: "your.email@example.com"),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
+
+              const Text("Password", style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
-                  labelText: "Password",
+                  hintText: "Enter your password",
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: AppColors.textGrey,
                     ),
-                    onPressed: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
+
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                    );
+                  },
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                  child: const Text("Forgot Password?"),
+                ),
+              ),
+
+              const SizedBox(height: 16),
               if (_errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.errorRed),
                   ),
                 ),
+
               ElevatedButton(
                 onPressed: _isLoading ? null : _handleLogin,
                 child: _isLoading
-                    ? const CircularProgressIndicator()
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
                     : const Text("Login"),
               ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                  );
-                },
-                child: const Text("Don't have an account? Register"),
+              const SizedBox(height: 16),
+
+              Center(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                    );
+                  },
+                  child: const Text("Don't have an account? Sign up"),
+                ),
               ),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
-                  );
-                },
-                child: const Text("Forgot Password?"),
+
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlue.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.primaryBlue.withOpacity(0.15)),
+                ),
+                child: RichText(
+                  text: TextSpan(
+                    style: TextStyle(color: AppColors.primaryBlueDark, fontSize: 12.5, height: 1.4),
+                    children: const [
+                      TextSpan(text: "Demo: ", style: TextStyle(fontWeight: FontWeight.w800)),
+                      TextSpan(
+                        text:
+                            "Use any email to login as a dog owner, or use vet@dermpaw.com to access the veterinarian dashboard.",
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),

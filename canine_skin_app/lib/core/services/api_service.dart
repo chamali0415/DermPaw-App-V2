@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:io';
 
 class ApiService {
-  static const String baseUrl = "http://10.146.167.128:5000";
+  static const String baseUrl = "http://10.93.193.128:5000";
 
   // Stores the logged-in user's token in memory for this app session
   static String? authToken;

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_logo.dart';
 import 'login_screen.dart';
 import '../home/home_screen.dart';
 import '../vet/vet_dashboard_screen.dart';
@@ -22,6 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _errorMessage;
   bool _obscurePassword = true;
   bool _isVetRole = false;
+  bool _consentGiven = false;
 
   @override
   void dispose() {
@@ -34,6 +37,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _handleRegister() async {
+    if (!_consentGiven) {
+      setState(() => _errorMessage = "Please confirm you understand the AI advisory notice");
+      return;
+    }
     if (_isVetRole && _vetLicenceController.text.trim().isEmpty) {
       setState(() => _errorMessage = "Veterinary registration number is required");
       return;
@@ -85,112 +92,193 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Register")),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      body: SafeArea(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const Center(child: AppLogo()),
+              const SizedBox(height: 16),
+              const Text(
+                "Join DermPaw",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                "Smart Skin Care for Your Best Friend",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textGrey, fontSize: 14),
+              ),
+              const SizedBox(height: 28),
+
+              const Text("Full Name", style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
               TextField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: "Full Name"),
+                decoration: const InputDecoration(hintText: "Enter your full name"),
               ),
               const SizedBox(height: 16),
+
+              const Text("Email", style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
               TextField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: "Email"),
+                decoration: const InputDecoration(hintText: "your.email@example.com"),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
+
+              const Text("Phone Number", style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
               TextField(
                 controller: _phoneController,
-                decoration: const InputDecoration(labelText: "Phone Number"),
+                decoration: const InputDecoration(hintText: "(555) 123-4567"),
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 16),
+
               const Text("User Role", style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: !_isVetRole ? Colors.blue[50] : null,
-                        side: BorderSide(color: !_isVetRole ? Colors.blue : Colors.grey),
-                      ),
-                      onPressed: () => setState(() => _isVetRole = false),
-                      child: Text(
-                        "Dog Owner",
-                        style: TextStyle(color: !_isVetRole ? Colors.blue : Colors.black54),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _isVetRole = false),
+                      child: Container(
+                        height: 48,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: !_isVetRole ? Colors.white : const Color(0xFFF5F7FB),
+                          borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
+                          border: Border.all(
+                            color: !_isVetRole ? AppColors.primaryBlue : const Color(0xFFE2E8F0),
+                            width: !_isVetRole ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Text(
+                          "Dog Owner",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: !_isVetRole ? AppColors.primaryBlue : AppColors.textGrey,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
                   Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: _isVetRole ? Colors.blue[50] : null,
-                        side: BorderSide(color: _isVetRole ? Colors.blue : Colors.grey),
-                      ),
-                      onPressed: () => setState(() => _isVetRole = true),
-                      child: Text(
-                        "Veterinarian",
-                        style: TextStyle(color: _isVetRole ? Colors.blue : Colors.black54),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _isVetRole = true),
+                      child: Container(
+                        height: 48,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: _isVetRole ? Colors.white : const Color(0xFFF5F7FB),
+                          borderRadius: const BorderRadius.horizontal(right: Radius.circular(14)),
+                          border: Border.all(
+                            color: _isVetRole ? AppColors.primaryBlue : const Color(0xFFE2E8F0),
+                            width: _isVetRole ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Text(
+                          "Veterinarian",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: _isVetRole ? AppColors.primaryBlue : AppColors.textGrey,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+
               if (_isVetRole) ...[
+                const SizedBox(height: 16),
+                const Text("B.V.Sc. Registration No.", style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
                 TextField(
                   controller: _vetLicenceController,
                   decoration: const InputDecoration(
-                    labelText: "B.V.Sc. Registration No.",
                     hintText: "e.g. 1847",
                     helperText: "Your Veterinary Council of Sri Lanka registration number",
                   ),
-                  keyboardType: TextInputType.text,
                 ),
-                const SizedBox(height: 16),
               ],
+
+              const SizedBox(height: 16),
+              const Text("Password", style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
-                  labelText: "Password",
+                  hintText: "Enter a strong password",
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: AppColors.textGrey,
                     ),
-                    onPressed: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: Text(
-                  "Must be 8+ characters with uppercase, lowercase, number, and special character",
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+              const SizedBox(height: 6),
+              Text(
+                "Must be at least 8 characters with uppercase, lowercase, and numbers",
+                style: TextStyle(fontSize: 12, color: AppColors.textGrey),
+              ),
+
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.amberBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.amberBorder),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Checkbox(
+                      value: _consentGiven,
+                      onChanged: (value) => setState(() => _consentGiven = value ?? false),
+                      activeColor: AppColors.amberText,
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          "I understand that DermPaw's AI predictions are advisory only and do not constitute a professional veterinary diagnosis.",
+                          style: TextStyle(color: AppColors.amberText, fontSize: 12.5),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
+
+              const SizedBox(height: 20),
               if (_errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.errorRed),
                   ),
                 ),
+
               ElevatedButton(
-                onPressed: _isLoading ? null : _handleRegister,
+                onPressed: (_isLoading || !_consentGiven) ? null : _handleRegister,
                 child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text("Register"),
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text("Create Account"),
               ),
               const SizedBox(height: 12),
               TextButton(
@@ -200,7 +288,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     MaterialPageRoute(builder: (context) => const LoginScreen()),
                   );
                 },
-                child: const Text("Already have an account? Log in"),
+                child: const Text("Already have an account? Login"),
               ),
             ],
           ),

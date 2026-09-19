@@ -8,6 +8,7 @@ import '../auth/login_screen.dart';
 import '../app_review/app_review_screen.dart';
 import '../app_review/app_reviews_list_screen.dart';
 import '../admin/admin_screen.dart';
+import '../../core/widgets/theme_toggle_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -72,9 +73,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+            appBar: AppBar(
         title: const Text("Dashboard"),
         actions: [
+          const ThemeToggleButton(),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: "Logout",

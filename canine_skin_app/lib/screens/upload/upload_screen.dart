@@ -171,6 +171,48 @@ class _UploadScreenState extends State<UploadScreen> {
     );
   }
 
+    void _showInvalidImageDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: AppColors.errorBg,
+                child: const Icon(Icons.pets_outlined, color: AppColors.errorRed, size: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text("Invalid Photo",
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              const Text(
+                "We couldn't recognize this as a dog's skin. Please upload a clear, close-up photo of the affected area.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textGrey, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    setState(() => _selectedImage = null);
+                  },
+                  child: const Text("Choose Another Photo"),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (_selectedImage == null) return;
 
@@ -213,12 +255,17 @@ class _UploadScreenState extends State<UploadScreen> {
         }
         if (classifyResult["statusCode"] == 201) {
           _closeDialogIfOpen();
-          setState(() {
-            _resultData = classifyResult["body"];
-            _lastResultId = classifyResult["body"]["result_id"];
-            _reviewRequested = false;
-            _showResult = true;
-          });
+          final body = classifyResult["body"];
+          if (body["is_valid_image"] == false) {
+            _showInvalidImageDialog();
+          } else {
+            setState(() {
+              _resultData = body;
+              _lastResultId = body["result_id"];
+              _reviewRequested = false;
+              _showResult = true;
+            });
+          }
         } else {
           _closeDialogIfOpen();
           _showFailureDialog();

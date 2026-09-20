@@ -460,21 +460,35 @@ class _UploadScreenState extends State<UploadScreen> {
     );
   }
 
-  Widget _buildResultView() {
+    Widget _buildResultView() {
     final data = _resultData!;
     final confidence = (data["confidence_score"] ?? 0).toDouble();
     final disease = data["predicted_disease"] ?? "Unknown";
+    final needsReview = data["needs_vet_review"] == true;
+
+    final Map<String, dynamic> rawProbabilities =
+        (data["probabilities"] as Map<String, dynamic>?) ?? {};
+    final sortedProbabilities = rawProbabilities.entries.toList()
+      ..sort((a, b) => (b.value as num).compareTo(a.value as num));
 
     return Column(
       children: [
         CircleAvatar(
           radius: 24,
-          backgroundColor: AppColors.confidenceGreen.withOpacity(0.15),
-          child: const Icon(Icons.check, color: AppColors.confidenceGreen),
+          backgroundColor: needsReview
+              ? AppColors.amberBg
+              : AppColors.confidenceGreen.withOpacity(0.15),
+          child: Icon(
+            needsReview ? Icons.help_outline : Icons.check,
+            color: needsReview ? AppColors.amberText : AppColors.confidenceGreen,
+          ),
         ),
         const SizedBox(height: 12),
-        const Text("Analysis Complete",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+        Text(
+          needsReview ? "Not Sure — Possibly $disease" : "Analysis Complete",
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 16),
         if (_selectedImage != null)
           ClipRRect(
@@ -504,7 +518,9 @@ class _UploadScreenState extends State<UploadScreen> {
                           value: confidence,
                           strokeWidth: 8,
                           backgroundColor: const Color(0xFFE5E7EB),
-                          color: AppColors.confidenceGreen,
+                          color: needsReview
+                              ? AppColors.amberText
+                              : AppColors.confidenceGreen,
                         ),
                       ),
                       Column(
@@ -522,11 +538,76 @@ class _UploadScreenState extends State<UploadScreen> {
                 const SizedBox(height: 12),
                 Text(disease,
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                if (sortedProbabilities.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text("Confidence Breakdown",
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  ),
+                  const SizedBox(height: 12),
+                  ...sortedProbabilities.map((entry) {
+                    final isTop = entry.key == sortedProbabilities.first.key;
+                    final pct = (entry.value as num).toDouble();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(entry.key,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: isTop ? FontWeight.w700 : FontWeight.w500,
+                                  )),
+                              Text("${pct.toStringAsFixed(0)}%",
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: isTop ? FontWeight.w700 : FontWeight.w500,
+                                  )),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: pct / 100,
+                              minHeight: 6,
+                              backgroundColor: const Color(0xFFE5E7EB),
+                              color: isTop
+                                  ? AppColors.confidenceGreen
+                                  : AppColors.primaryBlue.withOpacity(0.45),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
               ],
             ),
           ),
         ),
         const SizedBox(height: 16),
+        if (needsReview)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.amberBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.amberBorder),
+            ),
+            child: Text(
+              "The model is not confident about this photo. Try a closer, sharper photo in daylight, and ask a vet to check.",
+              style: TextStyle(color: AppColors.amberText, fontSize: 12.5),
+            ),
+          ),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(14),

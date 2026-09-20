@@ -1,5 +1,5 @@
-Fungal_infections
+Fungal(Dandruff)
 Healthy
-Hypersensitivity_allergic_dermatosis
-mange
-ringworm
+Hypersensitivity Allergy(Tick dermatitis)
+Mange
+Ringworm

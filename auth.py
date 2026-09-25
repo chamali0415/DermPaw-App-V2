@@ -63,6 +63,7 @@ def register():
         consent_status=data.get("consent_status", False),
         is_vet=is_vet,
         vet_licence_no=vet_licence_no if is_vet else None,
+        is_verified=not is_vet,   # vets start unverified until an admin approves them
     )
     db.session.add(new_user)
     db.session.commit()
@@ -87,6 +88,9 @@ def login():
     if not user or not bcrypt.check_password_hash(user.password_hash, data["password"]):
         return jsonify({"error": "Invalid email or password"}), 401
 
-    expiry = timedelta(minutes=15) if user.is_vet else timedelta(minutes=30)
+    if not user.is_active:
+        return jsonify({"error": "This account has been deactivated. Please contact the DermPaw administrator."}), 403
+
+    expiry = timedelta(minutes=15) if (user.is_vet or user.is_admin) else timedelta(minutes=30)
     access_token = create_access_token(identity=str(user.user_id), expires_delta=expiry)
     return jsonify({"message": "Login successful", "access_token": access_token, "user": user.to_dict()}), 200

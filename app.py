@@ -17,6 +17,7 @@ from history import history_bp
 from password_reset import password_reset_bp
 from app_review import app_review_bp
 from admin import admin_bp
+from portal import configure_portal
 
 load_dotenv()
 
@@ -26,6 +27,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = (
     f"@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
 )
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY")  # signs admin portal session cookies
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
 app.config["MAIL_SERVER"] = "smtp.gmail.com"
 app.config["MAIL_PORT"] = 587
@@ -49,6 +51,7 @@ app.register_blueprint(history_bp)
 app.register_blueprint(password_reset_bp)
 app.register_blueprint(app_review_bp)
 app.register_blueprint(admin_bp)
+configure_portal(app)
 
 @app.route("/health")
 def health():

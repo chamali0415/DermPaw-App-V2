@@ -1,0 +1,30 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h1>App reviews</h1>
+<p class="muted">Hidden reviews are not shown in the app and are not counted in the average rating.</p>
+
+<div class="table-wrap">
+<table>
+  <tr><th>User</th><th>Rating</th><th>Comment</th><th>Updated</th><th>Status</th><th>Action</th></tr>
+  {% for review, user in rows %}
+  <tr>
+    <td>{{ user.name }}</td>
+    <td>{{ "★" * review.rating }}{{ "☆" * (5 - review.rating) }}</td>
+    <td>{{ review.comment or "–" }}</td>
+    <td>{{ review.updated_at.strftime("%Y-%m-%d") if review.updated_at else "–" }}</td>
+    <td>{% if review.is_hidden %}<span class="badge b-red">Hidden</span>{% else %}<span class="badge b-green">Visible</span>{% endif %}</td>
+    <td>
+      <form class="inline" method="post" action="{{ url_for('portal.toggle_hidden', review_id=review.review_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn {{ 'btn-green' if review.is_hidden else 'btn-red' }}" type="submit">
+          {{ "Show" if review.is_hidden else "Hide" }}
+        </button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="muted">No app reviews yet.</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

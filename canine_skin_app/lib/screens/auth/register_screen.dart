@@ -99,13 +99,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: _emailController,
+<<<<<<< Updated upstream
                 decoration: const InputDecoration(labelText: "Email"),
+=======
+                decoration: const InputDecoration(hintText: "your_email@example.com"),
+>>>>>>> Stashed changes
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _phoneController,
+<<<<<<< Updated upstream
                 decoration: const InputDecoration(labelText: "Phone Number"),
+=======
+                decoration: const InputDecoration(hintText: "(+94) 74 4567258"),
+>>>>>>> Stashed changes
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 16),

@@ -74,7 +74,11 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               TextField(
                 controller: _emailController,
+<<<<<<< Updated upstream
                 decoration: const InputDecoration(labelText: "Email"),
+=======
+                decoration: const InputDecoration(hintText: "your_email@example.com"),
+>>>>>>> Stashed changes
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),

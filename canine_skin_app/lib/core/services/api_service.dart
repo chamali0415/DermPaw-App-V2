@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:io';
 
 class ApiService {
-  static const String baseUrl = "http://10.93.193.128:5000";
+  static const String baseUrl = "http://172.31.98.93:5000";
 
   // Stores the logged-in user's token in memory for this app session
   static String? authToken;
@@ -156,6 +156,21 @@ static Future<Map<String, dynamic>> classifyImage(int imageId) async {
     final response = await http.post(
       Uri.parse("$baseUrl/images/$imageId/classify"),
       headers: _authHeaders,
+    );
+    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+  }
+
+  static Future<Map<String, dynamic>> refineWithSymptoms({
+    required Map<String, dynamic> probabilities,
+    required List<String> symptoms,
+  }) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/results/refine"),
+      headers: _authHeaders,
+      body: jsonEncode({
+        "probabilities": probabilities,
+        "symptoms": symptoms,
+      }),
     );
     return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
   }

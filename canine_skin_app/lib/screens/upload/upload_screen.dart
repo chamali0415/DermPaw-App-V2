@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/login_screen.dart';
+import 'refine_symptoms_screen.dart';
+
 
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key});
@@ -306,6 +308,21 @@ class _UploadScreenState extends State<UploadScreen> {
     }
   }
 
+  Future<void> _openRefineScreen() async {
+    if (_resultData == null) return;
+    final updated = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RefineSymptomsScreen(resultData: _resultData!),
+      ),
+    );
+    if (updated != null) {
+      setState(() {
+        _resultData = updated;
+      });
+    }
+  }
+
   void _reset() {
     setState(() {
       _selectedImage = null;
@@ -460,7 +477,7 @@ class _UploadScreenState extends State<UploadScreen> {
     );
   }
 
-    Widget _buildResultView() {
+  Widget _buildResultView() {
     final data = _resultData!;
     final confidence = (data["confidence_score"] ?? 0).toDouble();
     final disease = data["predicted_disease"] ?? "Unknown";
@@ -590,6 +607,14 @@ class _UploadScreenState extends State<UploadScreen> {
                 ],
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: _openRefineScreen,
+            child: const Text("Refine Prediction"),
           ),
         ),
         const SizedBox(height: 16),

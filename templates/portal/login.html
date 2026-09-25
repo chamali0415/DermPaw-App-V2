@@ -1,0 +1,14 @@
+{% extends "portal/base.html" %}
+{% block title %}Admin login – DermPaw{% endblock %}
+{% block content %}
+<div class="card" style="max-width:380px;margin:60px auto;">
+  <h1>DermPaw Admin</h1>
+  <p class="muted">Administrator access only.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <p><label>Email<br><input type="email" name="email" required autofocus></label></p>
+    <p><label>Password<br><input type="password" name="password" required></label></p>
+    <button class="btn btn-green" type="submit" style="width:100%;padding:10px;">Log in</button>
+  </form>
+</div>
+{% endblock %}

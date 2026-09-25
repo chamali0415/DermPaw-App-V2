@@ -19,7 +19,7 @@ def list_pending_vets():
     if not require_admin(admin_id):
         return jsonify({"error": "Admin access only"}), 403
 
-    pending = User.query.filter_by(is_vet=True, is_verified=False).all()
+    pending = User.query.filter_by(is_vet=True, is_verified=False, is_active=True).all()
     return jsonify([u.to_dict() for u in pending]), 200
 
 

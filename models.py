@@ -16,6 +16,7 @@ class User(db.Model):
     vet_licence_no = db.Column(db.String(50), nullable=True)
     is_verified = db.Column(db.Boolean, default=True)
     is_admin = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -28,6 +29,7 @@ class User(db.Model):
             "vet_licence_no": self.vet_licence_no,
             "is_verified": self.is_verified,
             "is_admin": self.is_admin,
+            "is_active": self.is_active,
         }
     
 class Dog(db.Model):
@@ -133,6 +135,7 @@ class AppReview(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.user_id"), unique=True, nullable=False)
     rating = db.Column(db.Integer, nullable=False)
     comment = db.Column(db.Text, nullable=True)
+    is_hidden = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -1,0 +1,49 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h1>Vet verification</h1>
+<p class="muted">Check each B.V.Sc. registration number against the Veterinary Council of Sri Lanka register before verifying.</p>
+
+<h2>Awaiting verification ({{ pending|length }})</h2>
+{% if pending %}
+<div class="table-wrap">
+<table>
+  <tr><th>Name</th><th>Email</th><th>Phone</th><th>Licence no.</th><th>Registered</th><th>Action</th></tr>
+  {% for v in pending %}
+  <tr>
+    <td>{{ v.name }}</td><td>{{ v.email }}</td><td>{{ v.phone_number or "–" }}</td>
+    <td><strong>{{ v.vet_licence_no }}</strong></td>
+    <td>{{ v.created_at.strftime("%Y-%m-%d") if v.created_at else "–" }}</td>
+    <td>
+      <form class="inline" method="post" action="{{ url_for('portal.verify_vet', user_id=v.user_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-green" type="submit">Verify</button>
+      </form>
+      <form class="inline" method="post" action="{{ url_for('portal.reject_vet', user_id=v.user_id) }}"
+            onsubmit='return confirm({{ ("Reject " ~ v.name ~ " and deactivate this account?")|tojson }});'>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-red" type="submit">Reject</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}
+<p class="muted">No vets are waiting for verification.</p>
+{% endif %}
+
+<h2>Verified vets ({{ verified|length }})</h2>
+<div class="table-wrap">
+<table>
+  <tr><th>Name</th><th>Email</th><th>Licence no.</th><th>Status</th></tr>
+  {% for v in verified %}
+  <tr>
+    <td>{{ v.name }}</td><td>{{ v.email }}</td><td>{{ v.vet_licence_no or "–" }}</td>
+    <td>{% if v.is_active %}<span class="badge b-green">Active</span>{% else %}<span class="badge b-red">Deactivated</span>{% endif %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4" class="muted">No verified vets yet.</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="cards">
+  <div class="card"><div class="num">{{ stats.owners }}</div><div class="label">Dog owners / caregivers</div></div>
+  <div class="card"><div class="num">{{ stats.vets }}</div><div class="label">Verified vets</div></div>
+  <div class="card"><div class="num">{{ stats.pending_vets }}</div><div class="label"><a href="{{ url_for('portal.vets') }}">Vets awaiting verification</a></div></div>
+  <div class="card"><div class="num">{{ stats.dogs }}</div><div class="label">Dogs registered</div></div>
+  <div class="card"><div class="num">{{ stats.classifications }}</div><div class="label">Classifications run</div></div>
+  <div class="card"><div class="num">{{ stats.reviewed }}</div><div class="label">Vet reviews</div></div>
+  <div class="card"><div class="num">{{ "%.1f"|format(stats.avg_rating) if stats.avg_rating else "–" }}</div><div class="label">Average app rating (★)</div></div>
+</div>
+
+<h2>Model performance (from vet reviews)</h2>
+{% if total_reviewed %}
+<p>Vets agreed with the model on <strong>{{ overall }}%</strong> of {{ total_reviewed }} reviewed cases.
+  <span class="muted">Only cases a vet reviewed are counted, so these are mostly low-confidence or owner-flagged cases.</span></p>
+<div class="table-wrap">
+<table>
+  <tr><th>Model predicted</th><th>Reviewed</th><th>Vet agreed</th><th>Agreement rate</th></tr>
+  {% for label, c in per_class %}
+  <tr>
+    <td>{{ label }}</td><td>{{ c.reviewed }}</td><td>{{ c.approved }}</td>
+    <td><span class="bar"><span style="width:{{ c.rate }}%"></span></span> {{ c.rate }}%</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+
+<h2>Most common corrections</h2>
+{% if top_overrides %}
+<div class="table-wrap">
+<table>
+  <tr><th>Model said</th><th>Vet corrected to</th><th>Times</th></tr>
+  {% for pair, n in top_overrides %}
+  <tr><td>{{ pair[0] }}</td><td>{{ pair[1] }}</td><td>{{ n }}</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}
+<p class="muted">No corrections yet – vets have agreed with every reviewed prediction.</p>
+{% endif %}
+
+<p style="margin-top:16px;">
+  <a class="btn btn-green" style="text-decoration:none;" href="{{ url_for('portal.export_vet_confirmed') }}">Download vet-confirmed labels (CSV)</a>
+</p>
+{% else %}
+<p class="muted">No vet reviews yet. Stats will appear here once vets start reviewing cases.</p>
+{% endif %}
+{% endblock %}

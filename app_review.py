@@ -46,6 +46,7 @@ def list_app_reviews():
     reviews = (
         db.session.query(AppReview, User)
         .join(User, AppReview.user_id == User.user_id)
+        .filter(AppReview.is_hidden == False)
         .order_by(AppReview.updated_at.desc())
         .all()
     )

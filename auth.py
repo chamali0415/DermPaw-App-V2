@@ -3,6 +3,7 @@ from flask_bcrypt import Bcrypt
 from flask_jwt_extended import create_access_token
 from datetime import timedelta
 from models import db, User
+from validators import normalize_sl_phone, PHONE_ERROR
 
 import re
 
@@ -36,8 +37,12 @@ def register():
     if existing_user:
         return jsonify({"error": "Email already registered"}), 409
 
-    phone_number = data.get("phone_number")
-    if phone_number:
+    phone_number = None
+    raw_phone = (data.get("phone_number") or "").strip()
+    if raw_phone:
+        phone_number = normalize_sl_phone(raw_phone)
+        if not phone_number:
+            return jsonify({"error": PHONE_ERROR}), 400
         existing_phone = User.query.filter_by(phone_number=phone_number).first()
         if existing_phone:
             return jsonify({"error": "Phone number already registered"}), 409
@@ -58,7 +63,7 @@ def register():
     new_user = User(
         name=data["name"],
         email=data["email"],
-        phone_number=data.get("phone_number"),
+        phone_number=phone_number,
         password_hash=password_hash,
         consent_status=data.get("consent_status", False),
         is_vet=is_vet,

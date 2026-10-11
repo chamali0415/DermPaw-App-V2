@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Dog, Image, ClassificationResult, Feedback, VetReview
 from flask_bcrypt import check_password_hash
+from validators import normalize_sl_phone, PHONE_ERROR
 
 profile_bp = Blueprint("profile", __name__)
 
@@ -28,7 +29,17 @@ def update_profile():
     if "name" in data:
         user.name = data["name"]
     if "phone_number" in data:
-        user.phone_number = data["phone_number"]
+        raw_phone = (data["phone_number"] or "").strip()
+        if raw_phone == "":
+            user.phone_number = None
+        else:
+            phone = normalize_sl_phone(raw_phone)
+            if not phone:
+                return jsonify({"error": PHONE_ERROR}), 400
+            taken = User.query.filter(User.phone_number == phone, User.user_id != user.user_id).first()
+            if taken:
+                return jsonify({"error": "Phone number already registered"}), 409
+            user.phone_number = phone
 
     db.session.commit()
     return jsonify({"message": "Profile updated successfully", "user": user.to_dict()}), 200

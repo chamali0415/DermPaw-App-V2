@@ -91,6 +91,84 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  // ------------------------------------------------------------ delete
+
+  Future<bool> _confirm(String title, String message, String action) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(action, style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
+  Future<void> _deleteCase(dynamic item) async {
+    final ok = await _confirm(
+      "Delete this case?",
+      "This permanently deletes the ${item["predicted_disease"] ?? "diagnosis"} result, its photo and any vet review. This cannot be undone.",
+      "Delete",
+    );
+    if (!ok) return;
+
+    try {
+      final result = await ApiService.deleteCase(item["result_id"]);
+      if (result["statusCode"] == 401) {
+        _handleSessionExpired();
+        return;
+      }
+      if (result["statusCode"] == 200) {
+        setState(() => _results.removeWhere((r) => r["result_id"] == item["result_id"]));
+        _showSnack("Case deleted");
+      } else {
+        _showSnack(result["body"]["error"] ?? "Could not delete case");
+      }
+    } catch (e) {
+      _showSnack("Could not connect to server");
+    }
+  }
+
+  Future<void> _deleteAllCases() async {
+    final ok = await _confirm(
+      "Delete all cases?",
+      "This permanently deletes all ${_results.length} cases in your history, with their photos and vet reviews. This cannot be undone.",
+      "Delete All",
+    );
+    if (!ok) return;
+
+    try {
+      final result = await ApiService.deleteAllCases();
+      if (result["statusCode"] == 401) {
+        _handleSessionExpired();
+        return;
+      }
+      if (result["statusCode"] == 200) {
+        setState(() => _results = []);
+        _showSnack(result["body"]["message"] ?? "All cases deleted");
+      } else {
+        _showSnack(result["body"]["error"] ?? "Could not delete cases");
+      }
+    } catch (e) {
+      _showSnack("Could not connect to server");
+    }
+  }
+
+  void _showSnack(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
   @override
   void dispose() {
     for (final controller in _feedbackControllers.values) {
@@ -102,7 +180,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Diagnosis History")),
+      appBar: AppBar(
+        title: const Text("Diagnosis History"),
+        actions: [
+          if (!_isLoading && _results.isNotEmpty)
+            TextButton.icon(
+              onPressed: _deleteAllCases,
+              icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+              label: const Text("Delete all", style: TextStyle(color: Colors.red)),
+            ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _loadHistory,
         child: _isLoading
@@ -125,8 +213,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               subtitle: Text(
                                 "Confidence: ${(item["confidence_score"] * 100).toStringAsFixed(1)}%",
                               ),
-                              trailing: hasReview
-                                  ? Chip(
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (hasReview)
+                                    Chip(
                                       label: const Text(
                                         "Vet Reviewed",
                                         style: TextStyle(fontSize: 11, color: Colors.white),
@@ -135,17 +226,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                       padding: EdgeInsets.zero,
                                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     )
-                                  : item["review_requested"] == true
-                                      ? Chip(
-                                          label: const Text(
-                                            "Pending Review",
-                                            style: TextStyle(fontSize: 11, color: Colors.white),
-                                          ),
-                                          backgroundColor: Colors.orange[600],
-                                          padding: EdgeInsets.zero,
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        )
-                                      : null,
+                                  else if (item["review_requested"] == true)
+                                    Chip(
+                                      label: const Text(
+                                        "Pending Review",
+                                        style: TextStyle(fontSize: 11, color: Colors.white),
+                                      ),
+                                      backgroundColor: Colors.orange[600],
+                                      padding: EdgeInsets.zero,
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                    tooltip: "Delete case",
+                                    onPressed: () => _deleteCase(item),
+                                  ),
+                                ],
+                              ),
                               children: [
                                 Padding(
                                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

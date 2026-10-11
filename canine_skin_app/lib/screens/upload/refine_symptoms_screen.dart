@@ -33,10 +33,33 @@ class _RefineSymptomsScreenState extends State<RefineSymptomsScreen> {
   bool _reviewRequested = false;
   late Map<String, dynamic> _currentData;
 
+  /// The AI model's ORIGINAL result. Every refinement starts from this, so
+  /// pressing "Get Refined Prediction" again never stacks the symptom effects.
+  late final Map<String, dynamic> _originalResult;
+
   @override
   void initState() {
     super.initState();
-    _currentData = Map<String, dynamic>.from(widget.resultData);
+    final data = Map<String, dynamic>.from(widget.resultData);
+    // If this result was refined before, its original AI values were saved
+    // under "original_result" - always go back to those.
+    _originalResult = Map<String, dynamic>.from(
+      (data["original_result"] as Map?) ??
+          {
+            "predicted_disease": data["predicted_disease"],
+            "confidence_score": data["confidence_score"],
+            "needs_vet_review": data["needs_vet_review"],
+            "probabilities": data["probabilities"],
+          },
+    );
+    _currentData = {...data, "original_result": _originalResult};
+  }
+
+  /// Back to the AI-only result (used when no symptom is selected).
+  void _resetToOriginal() {
+    setState(() {
+      _currentData = {..._currentData, ..._originalResult, "original_result": _originalResult};
+    });
   }
 
   void _handleSessionExpired() {
@@ -52,12 +75,17 @@ class _RefineSymptomsScreenState extends State<RefineSymptomsScreen> {
   }
 
   Future<void> _getRefinedPrediction() async {
-    if (_selectedSymptoms.isEmpty) return;
+    if (_isRefining) return;
+    if (_selectedSymptoms.isEmpty) {
+      _resetToOriginal();
+      return;
+    }
 
     setState(() => _isRefining = true);
     try {
       final result = await ApiService.refineWithSymptoms(
-        probabilities: Map<String, dynamic>.from(_currentData["probabilities"]),
+        // Always the ORIGINAL AI probabilities, never the last refined ones
+        probabilities: Map<String, dynamic>.from(_originalResult["probabilities"]),
         symptoms: _selectedSymptoms.toList(),
       );
       if (result["statusCode"] == 401) {
@@ -66,7 +94,11 @@ class _RefineSymptomsScreenState extends State<RefineSymptomsScreen> {
       }
       if (result["statusCode"] == 200) {
         setState(() {
-          _currentData = {..._currentData, ...result["body"]};
+          _currentData = {
+            ..._currentData,
+            ...result["body"],
+            "original_result": _originalResult,
+          };
         });
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -274,6 +306,8 @@ class _RefineSymptomsScreenState extends State<RefineSymptomsScreen> {
                                   _selectedSymptoms.remove(entry.key);
                                 }
                               });
+                              // No symptoms left -> show the AI-only result again
+                              if (_selectedSymptoms.isEmpty) _resetToOriginal();
                             },
                           ),
                           const SizedBox(height: 6),

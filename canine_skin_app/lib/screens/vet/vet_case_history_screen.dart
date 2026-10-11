@@ -54,10 +54,104 @@ class _VetCaseHistoryScreenState extends State<VetCaseHistoryScreen> {
     }
   }
 
+  // ------------------------------------------------------------ delete
+  // For vets, "delete" removes the case from THIS vet's history list only.
+  // The owner's case and the vet's decision stay, because the owner relies on them.
+
+  Future<bool> _confirm(String title, String message, String action) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(action, style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
+  Future<void> _deleteCase(dynamic entry) async {
+    final review = entry["review"] ?? {};
+    final reviewId = review["review_id"];
+    if (reviewId == null) return;
+
+    final ok = await _confirm(
+      "Remove this case?",
+      "This removes the case from your case history. The dog owner will still see your review.",
+      "Remove",
+    );
+    if (!ok) return;
+
+    try {
+      final result = await ApiService.deleteVetCase(reviewId);
+      if (result["statusCode"] == 401) {
+        _handleSessionExpired();
+        return;
+      }
+      if (result["statusCode"] == 200) {
+        setState(() => _history.removeWhere((e) => (e["review"] ?? {})["review_id"] == reviewId));
+        _showSnack("Case removed from your history");
+      } else {
+        _showSnack(result["body"]["error"] ?? "Could not remove case");
+      }
+    } catch (e) {
+      _showSnack("Could not connect to server");
+    }
+  }
+
+  Future<void> _deleteAllCases() async {
+    final ok = await _confirm(
+      "Remove all cases?",
+      "This clears all ${_history.length} cases from your case history. Dog owners will still see your reviews.",
+      "Remove All",
+    );
+    if (!ok) return;
+
+    try {
+      final result = await ApiService.deleteAllVetCases();
+      if (result["statusCode"] == 401) {
+        _handleSessionExpired();
+        return;
+      }
+      if (result["statusCode"] == 200) {
+        setState(() => _history = []);
+        _showSnack(result["body"]["message"] ?? "Case history cleared");
+      } else {
+        _showSnack(result["body"]["error"] ?? "Could not remove cases");
+      }
+    } catch (e) {
+      _showSnack("Could not connect to server");
+    }
+  }
+
+  void _showSnack(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("My Case History")),
+      appBar: AppBar(
+        title: const Text("My Case History"),
+        actions: [
+          if (!_isLoading && _history.isNotEmpty)
+            TextButton.icon(
+              onPressed: _deleteAllCases,
+              icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+              label: const Text("Delete all", style: TextStyle(color: Colors.red)),
+            ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _loadHistory,
         child: _isLoading
@@ -79,12 +173,14 @@ class _VetCaseHistoryScreenState extends State<VetCaseHistoryScreen> {
                               title: Text(result["predicted_disease"] ?? "Unknown"),
                               subtitle: Text(
                                 "Decision: ${review["decision"] ?? "Unknown"}\n"
-                                "Confidence: ${((result["confidence_score"] ?? 0) * 100).toStringAsFixed(1)}%",
+                                "Confidence: ${((result["confidence_score"] ?? 0) * 100).toStringAsFixed(1)}%  •  "
+                                "${(result["result_date"] ?? "").toString().split("T").first}",
                               ),
                               isThreeLine: true,
-                              trailing: Text(
-                                (result["result_date"] ?? "").toString().split("T").first,
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                tooltip: "Remove from history",
+                                onPressed: () => _deleteCase(entry),
                               ),
                             ),
                           );

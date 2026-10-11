@@ -4,6 +4,7 @@ from PIL import Image
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 from models import db, Image as ImageModel, ClassificationResult
+from ood_gate import check_image, warm_up
 
 classify_bp = Blueprint("classify", __name__)
 
@@ -15,8 +16,9 @@ output_details = interpreter.get_output_details()
 with open("model/labels.txt", "r") as f:
     CLASS_NAMES = [line.strip() for line in f.readlines()]
 
+warm_up()  # load the invalid-photo gate model once, at startup
+
 CONFIDENCE_THRESHOLD = 0.5
-VALID_IMAGE_THRESHOLD = 0.25
 
 SYMPTOM_ADJUSTMENTS = {
     # Ringworm
@@ -53,14 +55,29 @@ def classify_image(image_id):
     if not image_record:
         return jsonify({"error": "Image not found"}), 404
 
-    img = Image.open(image_record.image_path).convert("RGB")
-    img = img.resize((256, 256))
+    try:
+        original = Image.open(image_record.image_path).convert("RGB")
+    except Exception:
+        return jsonify({"error": "The uploaded image could not be read. Please upload it again."}), 400
+
+    img = original.resize((256, 256))
     arr = np.array(img, dtype=np.float32)
     arr = np.expand_dims(arr, axis=0)
 
     interpreter.set_tensor(input_details[0]["index"], arr)
     interpreter.invoke()
     output = interpreter.get_tensor(output_details[0]["index"])[0]
+
+    # ---- Invalid-photo gate: reject non-dog-skin photos BEFORE saving a result
+    is_valid, reason, gate_details = check_image(original, output)
+    print(f"[classify] image {image_id} gate={reason} {gate_details}")
+    if not is_valid:
+        return jsonify({
+            "error": "Invalid photo. We couldn't recognize this as a photo of a dog's skin.",
+            "is_valid_image": False,
+            "reason": reason,
+            "gate": gate_details,
+        }), 422
 
     predicted_index = int(np.argmax(output))
     confidence = float(output[predicted_index])
@@ -70,7 +87,6 @@ def classify_image(image_id):
     }
 
     needs_vet_review = confidence < CONFIDENCE_THRESHOLD
-    is_valid_image = confidence >= VALID_IMAGE_THRESHOLD
 
     result = ClassificationResult(
         image_id=image_id,
@@ -86,7 +102,7 @@ def classify_image(image_id):
         "predicted_disease": predicted_class,
         "confidence_score": round(confidence, 4),
         "needs_vet_review": needs_vet_review,
-        "is_valid_image": is_valid_image,
+        "is_valid_image": True,
         "probabilities": probabilities
     }), 201
 

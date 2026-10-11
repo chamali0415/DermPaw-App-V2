@@ -17,7 +17,8 @@ class _VetDashboardScreenState extends State<VetDashboardScreen> {
   String? _errorMessage;
   List<dynamic> _pending = [];
   bool _isVerified = true;
-    bool _isAdmin = false;
+  bool _isAdmin = false;
+  bool _isVet = ApiService.currentUserIsVet;
 
   @override
   void initState() {
@@ -32,6 +33,9 @@ class _VetDashboardScreenState extends State<VetDashboardScreen> {
       setState(() {
         _isVerified = result["body"]["is_verified"] ?? true;
         _isAdmin = result["body"]["is_admin"] ?? false;
+        _isVet = result["body"]["is_vet"] == true;
+        ApiService.currentUserName = result["body"]["name"] ?? ApiService.currentUserName;
+        ApiService.currentUserIsVet = _isVet;
       });
     }
   }
@@ -80,7 +84,22 @@ class _VetDashboardScreenState extends State<VetDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final name = ApiService.currentUserName ?? "Doctor";
+    if (!_isVet && !_isAdmin) {
+      return Scaffold(
+        appBar: AppBar(title: const Text("Veterinarian Dashboard")),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text("This area is only for registered veterinarians.",
+                textAlign: TextAlign.center),
+          ),
+        ),
+      );
+    }
+    final rawName = (ApiService.currentUserName ?? "").trim();
+    final name = rawName.isEmpty
+        ? "Doctor"
+        : rawName.replaceFirst(RegExp(r'^dr\.?\s*', caseSensitive: false), "");
 
     return Scaffold(
       appBar: AppBar(

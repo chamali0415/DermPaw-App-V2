@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/login_screen.dart';
@@ -36,7 +38,14 @@ class _UploadScreenState extends State<UploadScreen> {
 
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source, imageQuality: 90);
+    // Downscale big camera/internet photos before upload: faster on mobile
+    // data and keeps the request under the server's upload size limit.
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 88,
+    );
     if (picked != null) {
       setState(() {
         _selectedImage = File(picked.path);
@@ -123,7 +132,11 @@ class _UploadScreenState extends State<UploadScreen> {
     );
   }
 
-  void _showFailureDialog() {
+  void _showFailureDialog({
+    String title = "Analysis Failed",
+    String message = "Something went wrong while analysing this photo. Please try again.",
+    bool canRetry = true,
+  }) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -139,37 +152,82 @@ class _UploadScreenState extends State<UploadScreen> {
                 child: const Icon(Icons.error_outline, color: AppColors.errorRed, size: 28),
               ),
               const SizedBox(height: 16),
-              const Text("Analysis Failed",
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              Text(title,
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
-              const Text(
-                "We couldn't complete the analysis. Please check your internet connection and try again.",
+              Text(
+                message,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textGrey, fontSize: 13),
               ),
               const SizedBox(height: 20),
+              if (canRetry) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _submit();
+                    },
+                    child: const Text("Retry"),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _submit();
-                  },
-                  child: const Text("Retry"),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel"),
-                ),
+                child: canRetry
+                    ? OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
+                      )
+                    : ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          setState(() => _selectedImage = null);
+                        },
+                        child: const Text("Choose Another Photo"),
+                      ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  /// Shows the right message for a failed server response instead of
+  /// always blaming the internet connection.
+  void _showServerError(Map<String, dynamic> result) {
+    final code = result["statusCode"] as int;
+    final body = result["body"];
+    final serverMsg = body is Map ? body["error"] : null;
+
+    if (code == 413) {
+      _showFailureDialog(
+        title: "Photo Too Large",
+        message: "This photo is too large to upload. Please choose a smaller photo.",
+        canRetry: false,
+      );
+    } else if (code == 400 || code == 415) {
+      _showFailureDialog(
+        title: "Photo Not Accepted",
+        message: serverMsg ?? "This photo could not be used. Please choose another photo.",
+        canRetry: false,
+      );
+    } else {
+      _showFailureDialog(
+        title: "Server Busy",
+        message: serverMsg ??
+            "The analysis server had a problem (error $code). Please try again in a moment.",
+      );
+    }
+  }
+
+  void _showNetworkError() {
+    _showFailureDialog(
+      title: "Connection Problem",
+      message: "We couldn't reach the DermPaw server. Please check your internet connection and try again.",
     );
   }
 
@@ -216,7 +274,7 @@ class _UploadScreenState extends State<UploadScreen> {
   }
 
   Future<void> _submit() async {
-    if (_selectedImage == null) return;
+    if (_selectedImage == null || _isLoading) return;
 
     setState(() => _isLoading = true);
     _showAnalyzingDialog();
@@ -230,7 +288,7 @@ class _UploadScreenState extends State<UploadScreen> {
       }
       if (dogResult["statusCode"] != 201) {
         _closeDialogIfOpen();
-        _showFailureDialog();
+        _showServerError(dogResult);
         return;
       }
       final dogId = dogResult["body"]["dog"]["dog_id"];
@@ -239,44 +297,58 @@ class _UploadScreenState extends State<UploadScreen> {
         dogId: dogId,
         imageFile: _selectedImage!,
       );
-
       if (imageResult["statusCode"] == 401) {
         _closeDialogIfOpen();
         _handleSessionExpired();
         return;
       }
-
-      if (imageResult["statusCode"] == 201) {
-        final imageId = imageResult["body"]["image"]["image_id"];
-
-        final classifyResult = await ApiService.classifyImage(imageId);
-        if (classifyResult["statusCode"] == 401) {
-          _closeDialogIfOpen();
-          _handleSessionExpired();
-          return;
-        }
-        if (classifyResult["statusCode"] == 201) {
-          _closeDialogIfOpen();
-          final body = classifyResult["body"];
-          if (body["is_valid_image"] == false) {
-            _showInvalidImageDialog();
-          } else {
-            setState(() {
-              _resultData = body;
-              _lastResultId = body["result_id"];
-              _reviewRequested = false;
-              _showResult = true;
-            });
-          }
-        } else {
-          _closeDialogIfOpen();
-          _showFailureDialog();
-        }
-      } else {
+      if (imageResult["statusCode"] != 201) {
         _closeDialogIfOpen();
-        _showFailureDialog();
+        _showServerError(imageResult);
+        return;
       }
+      final imageId = imageResult["body"]["image"]["image_id"];
+
+      final classifyResult = await ApiService.classifyImage(imageId);
+      _closeDialogIfOpen();
+
+      if (classifyResult["statusCode"] == 401) {
+        _handleSessionExpired();
+        return;
+      }
+
+      final body = classifyResult["body"];
+      // 422 = the server decided this is not a dog-skin photo
+      if (classifyResult["statusCode"] == 422 ||
+          (body is Map && body["is_valid_image"] == false)) {
+        _showInvalidImageDialog();
+        return;
+      }
+      if (classifyResult["statusCode"] != 201) {
+        _showServerError(classifyResult);
+        return;
+      }
+
+      setState(() {
+        _resultData = body;
+        _lastResultId = body["result_id"];
+        _reviewRequested = false;
+        _showResult = true;
+      });
+    } on SocketException {
+      _closeDialogIfOpen();
+      _showNetworkError();
+    } on TimeoutException {
+      _closeDialogIfOpen();
+      _showFailureDialog(
+        title: "Taking Too Long",
+        message: "The server is taking longer than usual. Please check your connection and try again.",
+      );
+    } on http.ClientException {
+      _closeDialogIfOpen();
+      _showNetworkError();
     } catch (e) {
+      debugPrint("Upload/classify error: $e");
       _closeDialogIfOpen();
       _showFailureDialog();
     } finally {

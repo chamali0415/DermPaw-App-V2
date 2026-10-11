@@ -5,9 +5,27 @@ import 'dart:io';
 class ApiService {
   static const String baseUrl = "http://20.205.10.143";
 
-  // Stores the logged-in user's token in memory for this app session
+  // Upload + classification can take a while on a slow mobile connection
+  static const Duration uploadTimeout = Duration(seconds: 60);
+  static const Duration requestTimeout = Duration(seconds: 30);
+
+  // Stores the logged-in user's details in memory for this app session
   static String? authToken;
   static String? currentUserName;
+  static bool currentUserIsVet = false;
+
+  /// Decodes a JSON body safely. If the server returned an HTML error page
+  /// (e.g. nginx 502/504 or a Flask crash), we still get a usable map instead
+  /// of a FormatException that the UI would mistake for "no internet".
+  static dynamic _decode(http.Response response) {
+    try {
+      return jsonDecode(response.body);
+    } catch (_) {
+      return {
+        "error": "Server error (${response.statusCode}). Please try again in a moment."
+      };
+    }
+  }
 
   static Map<String, String> get _authHeaders => {
         "Content-Type": "application/json",
@@ -35,10 +53,11 @@ class ApiService {
           "vet_licence_no": vetLicenceNo,
       }),
     );
-    final decoded = jsonDecode(response.body);
+    final decoded = _decode(response);
     if (response.statusCode == 201) {
       authToken = decoded["access_token"];
       currentUserName = decoded["user"]["name"];
+      currentUserIsVet = decoded["user"]["is_vet"] == true;
     }
     return {"statusCode": response.statusCode, "body": decoded};
   }
@@ -52,15 +71,18 @@ class ApiService {
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"email": email, "password": password}),
     );
-    final decoded = jsonDecode(response.body);
+    final decoded = _decode(response);
     if (response.statusCode == 200) {
       authToken = decoded["access_token"];
+      currentUserName = decoded["user"]["name"];
+      currentUserIsVet = decoded["user"]["is_vet"] == true;
     }
     return {"statusCode": response.statusCode, "body": decoded};
   }
   static void logout() {
     authToken = null;
     currentUserName = null;
+    currentUserIsVet = false;
   }
 
  static Future<Map<String, dynamic>> forgotPassword({
@@ -71,7 +93,7 @@ class ApiService {
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"email": email}),
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> resetPassword({
@@ -88,7 +110,7 @@ class ApiService {
         "new_password": newPassword,
       }),
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> getProfile() async {
@@ -96,7 +118,7 @@ class ApiService {
       Uri.parse("$baseUrl/profile"),
       headers: _authHeaders,
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> updateProfile({
@@ -111,7 +133,7 @@ class ApiService {
         if (phoneNumber != null) "phone_number": phoneNumber,
       }),
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
 static Future<Map<String, dynamic>> deleteAccount({
@@ -122,7 +144,7 @@ static Future<Map<String, dynamic>> deleteAccount({
       headers: _authHeaders,
       body: jsonEncode({"password": password}),
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
 
@@ -134,8 +156,8 @@ static Future<Map<String, dynamic>> addDog({
       Uri.parse("$baseUrl/dogs"),
       headers: _authHeaders,
       body: jsonEncode({"age": age, "owner_type": ownerType}),
-    );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    ).timeout(requestTimeout);
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> uploadImage({
@@ -147,17 +169,17 @@ static Future<Map<String, dynamic>> addDog({
     request.headers["Authorization"] = "Bearer $authToken";
     request.files.add(await http.MultipartFile.fromPath("file", imageFile.path));
 
-    final streamedResponse = await request.send();
+    final streamedResponse = await request.send().timeout(uploadTimeout);
     final response = await http.Response.fromStream(streamedResponse);
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
 static Future<Map<String, dynamic>> classifyImage(int imageId) async {
     final response = await http.post(
       Uri.parse("$baseUrl/images/$imageId/classify"),
       headers: _authHeaders,
-    );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    ).timeout(uploadTimeout);
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> refineWithSymptoms({
@@ -172,7 +194,7 @@ static Future<Map<String, dynamic>> classifyImage(int imageId) async {
         "symptoms": symptoms,
       }),
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
 static Future<Map<String, dynamic>> requestVetReview(int resultId) async {
@@ -180,7 +202,7 @@ static Future<Map<String, dynamic>> requestVetReview(int resultId) async {
       Uri.parse("$baseUrl/results/$resultId/request-review"),
       headers: _authHeaders,
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
 static Future<Map<String, dynamic>> getHistory() async {
@@ -188,7 +210,7 @@ static Future<Map<String, dynamic>> getHistory() async {
       Uri.parse("$baseUrl/history"),
       headers: _authHeaders,
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
 static Future<Map<String, dynamic>> getPendingReviews() async {
@@ -196,7 +218,7 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
       Uri.parse("$baseUrl/vet/reviews"),
       headers: _authHeaders,
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> getCaseDetails(int resultId) async {
@@ -204,7 +226,7 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
       Uri.parse("$baseUrl/vet/reviews/$resultId/details"),
       headers: _authHeaders,
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> getVetCaseHistory() async {
@@ -212,7 +234,7 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
       Uri.parse("$baseUrl/vet/history"),
       headers: _authHeaders,
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> submitReview({
@@ -225,7 +247,7 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
       headers: _authHeaders,
       body: jsonEncode({"decision": decision, "comments": comments}),
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> submitFeedback({
@@ -237,7 +259,7 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
     headers: _authHeaders,
     body: jsonEncode({"feedback_text": feedbackText}),
   );
-  return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+  return {"statusCode": response.statusCode, "body": _decode(response)};
 }
 
   static Future<Map<String, dynamic>> getAppReview() async {
@@ -245,7 +267,7 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
       Uri.parse("$baseUrl/app-review"),
       headers: _authHeaders,
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> submitAppReview({
@@ -257,7 +279,7 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
       headers: _authHeaders,
       body: jsonEncode({"rating": rating, "comment": comment}),
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> getAllAppReviews() async {
@@ -265,7 +287,7 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
       Uri.parse("$baseUrl/app-reviews"),
       headers: _authHeaders,
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> getPendingVets() async {
@@ -273,7 +295,7 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
       Uri.parse("$baseUrl/admin/pending-vets"),
       headers: _authHeaders,
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
 
   static Future<Map<String, dynamic>> verifyVet(int userId) async {
@@ -281,6 +303,11 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
       Uri.parse("$baseUrl/admin/vets/$userId/verify"),
       headers: _authHeaders,
     );
-    return {"statusCode": response.statusCode, "body": jsonDecode(response.body)};
+    return {"statusCode": response.statusCode, "body": _decode(response)};
   }
+
+  /// URL + header for showing a stored scan image with Image.network
+  static String imageFileUrl(int imageId) => "$baseUrl/images/$imageId/file";
+  static Map<String, String> get imageHeaders =>
+      {if (authToken != null) "Authorization": "Bearer $authToken"};
 }

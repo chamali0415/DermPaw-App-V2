@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/utils/phone_utils.dart';
 import '../auth/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _profile;
+  String? _phoneError;
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -32,7 +34,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _profile = result["body"];
           _nameController.text = _profile?["name"] ?? "";
-          _phoneController.text = _profile?["phone_number"] ?? "";
+          ApiService.currentUserName = _profile?["name"] ?? ApiService.currentUserName;
+          _phoneController.text = PhoneUtils.toLocal(_profile?["phone_number"]);
         });
       } else if (result["statusCode"] == 401) {
         _handleSessionExpired();
@@ -48,11 +51,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    setState(() => _isLoading = true);
+    final phone = PhoneUtils.normalize(_phoneController.text);
+    if (phone == null) {
+      setState(() => _phoneError = PhoneUtils.errorText);
+      return;
+    }
+    setState(() {
+      _phoneError = null;
+      _isLoading = true;
+    });
     try {
       final result = await ApiService.updateProfile(
         name: _nameController.text.trim(),
-        phoneNumber: _phoneController.text.trim(),
+        phoneNumber: phone,
       );
       if (result["statusCode"] == 200) {
         if (mounted) {
@@ -65,7 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _handleSessionExpired();
         return;
       } else {
-        setState(() => _errorMessage = "Could not update profile");
+        setState(() => _errorMessage = result["body"]["error"] ?? "Could not update profile");
       }
     } catch (e) {
       setState(() => _errorMessage = "Could not connect to server");
@@ -180,9 +191,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     decoration: const InputDecoration(labelText: "Name"),
                   ),
                   const SizedBox(height: 16),
-                  TextField(
+                  PhoneUtils.field(
                     controller: _phoneController,
-                    decoration: const InputDecoration(labelText: "Phone Number"),
+                    labelText: "Phone Number",
+                    errorText: _phoneError,
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(

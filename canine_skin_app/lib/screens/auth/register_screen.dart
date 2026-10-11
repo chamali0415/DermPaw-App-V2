@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_logo.dart';
+import '../../core/utils/phone_utils.dart';
 import 'login_screen.dart';
 import '../home/home_screen.dart';
 import '../vet/vet_dashboard_screen.dart';
@@ -25,6 +26,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _isVetRole = false;
   bool _consentGiven = false;
+  String? _phoneError;
 
   @override
   void dispose() {
@@ -45,6 +47,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _errorMessage = "Veterinary registration number is required");
       return;
     }
+    final phone = PhoneUtils.normalize(_phoneController.text);
+    if (phone == null || phone.isEmpty) {
+      setState(() {
+        _phoneError = PhoneUtils.errorText;
+        _errorMessage = "Please enter a valid Sri Lankan phone number";
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -56,7 +66,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        phoneNumber: _phoneController.text.trim(),
+        phoneNumber: phone,
         isVet: _isVetRole,
         vetLicenceNo: _vetLicenceController.text.trim(),
       );
@@ -132,10 +142,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const Text("Phone Number", style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
-              TextField(
+              PhoneUtils.field(
                 controller: _phoneController,
-                decoration: const InputDecoration(hintText: "(555) 123-4567"),
-                keyboardType: TextInputType.phone,
+                errorText: _phoneError,
+                onChanged: (_) {
+                  if (_phoneError != null) setState(() => _phoneError = null);
+                },
               ),
               const SizedBox(height: 16),
 

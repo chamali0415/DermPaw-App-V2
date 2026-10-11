@@ -97,6 +97,7 @@ flutter:
   assets:
     - assets/icon/app_icon.png
     - assets/symptoms/
+    - assets/images/
 
 flutter_icons:
   android: true

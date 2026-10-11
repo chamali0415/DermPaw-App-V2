@@ -39,6 +39,7 @@ class ApiService {
     String? phoneNumber,
     required bool isVet,
     String? vetLicenceNo,
+    String? verificationCode,
   }) async {
     final response = await http.post(
       Uri.parse("$baseUrl/register"),
@@ -51,6 +52,7 @@ class ApiService {
         "role": isVet ? "vet" : "owner",
         if (isVet && vetLicenceNo != null && vetLicenceNo.isNotEmpty)
           "vet_licence_no": vetLicenceNo,
+        if (verificationCode != null) "verification_code": verificationCode,
       }),
     );
     final decoded = _decode(response);
@@ -310,4 +312,54 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
   static String imageFileUrl(int imageId) => "$baseUrl/images/$imageId/file";
   static Map<String, String> get imageHeaders =>
       {if (authToken != null) "Authorization": "Bearer $authToken"};
+
+  // ---------------------------------------------------- email verification
+
+  /// Step 1 of registration: e-mails a 4-digit code to [email].
+  static Future<Map<String, dynamic>> sendVerificationCode(String email) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/register/send-code"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"email": email}),
+    ).timeout(requestTimeout);
+    return {"statusCode": response.statusCode, "body": _decode(response)};
+  }
+
+  // ---------------------------------------------------------- delete cases
+
+  /// Owner: permanently delete one case (result, photo, vet review).
+  static Future<Map<String, dynamic>> deleteCase(int resultId) async {
+    final response = await http.delete(
+      Uri.parse("$baseUrl/history/$resultId"),
+      headers: _authHeaders,
+    ).timeout(requestTimeout);
+    return {"statusCode": response.statusCode, "body": _decode(response)};
+  }
+
+  /// Owner: permanently delete ALL of their cases.
+  static Future<Map<String, dynamic>> deleteAllCases() async {
+    final response = await http.delete(
+      Uri.parse("$baseUrl/history"),
+      headers: _authHeaders,
+    ).timeout(requestTimeout);
+    return {"statusCode": response.statusCode, "body": _decode(response)};
+  }
+
+  /// Vet: remove one reviewed case from the vet's own history list.
+  static Future<Map<String, dynamic>> deleteVetCase(int reviewId) async {
+    final response = await http.delete(
+      Uri.parse("$baseUrl/vet/history/$reviewId"),
+      headers: _authHeaders,
+    ).timeout(requestTimeout);
+    return {"statusCode": response.statusCode, "body": _decode(response)};
+  }
+
+  /// Vet: remove ALL reviewed cases from the vet's own history list.
+  static Future<Map<String, dynamic>> deleteAllVetCases() async {
+    final response = await http.delete(
+      Uri.parse("$baseUrl/vet/history"),
+      headers: _authHeaders,
+    ).timeout(requestTimeout);
+    return {"statusCode": response.statusCode, "body": _decode(response)};
+  }
 }

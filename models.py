@@ -118,6 +118,9 @@ class VetReview(db.Model):
     decision = db.Column(db.String(50))
     comments = db.Column(db.Text)
     review_date = db.Column(db.DateTime, default=datetime.utcnow)
+    # True when the vet removed this case from their own case history.
+    # The owner's record and the vet's decision are kept.
+    hidden_by_vet = db.Column(db.Boolean, default=False, nullable=False)
 
     def to_dict(self):
         return {
@@ -157,3 +160,16 @@ class PasswordReset(db.Model):
     reset_code = db.Column(db.String(6), nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
     used = db.Column(db.Boolean, default=False)
+
+
+class EmailVerification(db.Model):
+    """4-digit code e-mailed during registration. Only a hash is stored."""
+    __tablename__ = "email_verifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(100), nullable=False, index=True)
+    code_hash = db.Column(db.String(255), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    attempts = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+

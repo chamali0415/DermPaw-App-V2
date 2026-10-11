@@ -128,7 +128,11 @@ def get_vet_case_history():
     if not require_vet(vet_id):
         return jsonify({"error": "Only veterinarians can access this route"}), 403
 
-    reviews = VetReview.query.filter_by(vet_id=vet_id).order_by(VetReview.review_date.desc()).all()
+    reviews = (
+        VetReview.query.filter_by(vet_id=vet_id, hidden_by_vet=False)
+        .order_by(VetReview.review_date.desc())
+        .all()
+    )
 
     history = []
     for review in reviews:
@@ -139,3 +143,39 @@ def get_vet_case_history():
         })
 
     return jsonify(history), 200
+
+
+# ------------------------------------------------- remove from vet case history
+# A vet "deleting" a case only removes it from THEIR history list. The owner's
+# case and the vet's decision stay, because the owner relies on that review.
+
+@vet_review_bp.route("/vet/history/<int:review_id>", methods=["DELETE"])
+@jwt_required()
+def hide_vet_case(review_id):
+    vet_id = get_jwt_identity()
+    if not require_vet(vet_id):
+        return jsonify({"error": "Only veterinarians can access this route"}), 403
+
+    review = VetReview.query.filter_by(review_id=review_id, vet_id=int(vet_id)).first()
+    if not review:
+        return jsonify({"error": "Case not found"}), 404
+
+    review.hidden_by_vet = True
+    db.session.commit()
+    return jsonify({"message": "Case removed from your history", "deleted": 1}), 200
+
+
+@vet_review_bp.route("/vet/history", methods=["DELETE"])
+@jwt_required()
+def hide_all_vet_cases():
+    vet_id = get_jwt_identity()
+    if not require_vet(vet_id):
+        return jsonify({"error": "Only veterinarians can access this route"}), 403
+
+    count = (
+        VetReview.query.filter_by(vet_id=int(vet_id), hidden_by_vet=False)
+        .update({"hidden_by_vet": True}, synchronize_session=False)
+    )
+    db.session.commit()
+    return jsonify({"message": f"{count} case(s) removed from your history", "deleted": count}), 200
+

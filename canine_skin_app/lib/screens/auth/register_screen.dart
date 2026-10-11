@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_logo.dart';
@@ -56,46 +58,82 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (_nameController.text.trim().isEmpty) {
+      setState(() => _errorMessage = "Please enter your full name");
+      return;
+    }
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailController.text.trim())) {
+      setState(() => _errorMessage = "Please enter a valid email address");
+      return;
+    }
+    // Same rule as the server, checked before we send the email code
+    final pw = _passwordController.text;
+    final strong = pw.length >= 8 &&
+        RegExp(r'[A-Z]').hasMatch(pw) &&
+        RegExp(r'[a-z]').hasMatch(pw) &&
+        RegExp(r'[0-9]').hasMatch(pw) &&
+        RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(pw);
+    if (!strong) {
+      setState(() => _errorMessage =
+          "Password must be at least 8 characters with an uppercase letter, a lowercase letter, a number and a special character");
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
+    // Step 1: e-mail a 4-digit code
+    final email = _emailController.text.trim();
     try {
-      final result = await ApiService.register(
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        phoneNumber: phone,
-        isVet: _isVetRole,
-        vetLicenceNo: _vetLicenceController.text.trim(),
-      );
-
-      if (result["statusCode"] == 201) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Registration successful!")),
-          );
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => _isVetRole ? const VetDashboardScreen() : const HomeScreen(),
-            ),
-          );
-        }
-      } else {
-        setState(() {
-          _errorMessage = result["body"]["error"] ?? "Registration failed";
-        });
+      final sent = await ApiService.sendVerificationCode(email);
+      // 429 = a code was sent less than a minute ago; it is still valid
+      if (sent["statusCode"] != 200 && sent["statusCode"] != 429) {
+        setState(() => _errorMessage = sent["body"]["error"] ?? "Could not send verification code");
+        return;
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = "Could not connect to server. Check your connection.";
-      });
+      setState(() => _errorMessage = "Could not connect to server. Check your connection.");
+      return;
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
+    }
+    if (!mounted) return;
+
+    // Step 2: ask for the code, then create the account with it
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => _VerifyEmailDialog(
+        email: email,
+        register: (code) => ApiService.register(
+          name: _nameController.text.trim(),
+          email: email,
+          password: _passwordController.text,
+          phoneNumber: phone,
+          isVet: _isVetRole,
+          vetLicenceNo: _vetLicenceController.text.trim(),
+          verificationCode: code,
+        ),
+      ),
+    );
+
+    if (result == null || !mounted) return; // user cancelled
+
+    if (result["statusCode"] == 201) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email verified - registration successful!")),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => _isVetRole ? const VetDashboardScreen() : const HomeScreen(),
+        ),
+      );
+    } else {
+      // A problem with the form itself (e.g. phone already registered)
+      setState(() => _errorMessage = result["body"]["error"] ?? "Registration failed");
     }
   }
 
@@ -238,7 +276,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                "Must be at least 8 characters with uppercase, lowercase, and numbers",
+                "At least 8 characters with uppercase, lowercase, a number and a special character (e.g. !@#)",
                 style: TextStyle(fontSize: 12, color: AppColors.textGrey),
               ),
 
@@ -306,6 +344,178 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+
+/// Dialog that asks for the 4-digit e-mail code and creates the account.
+/// Returns the register() result, or null if the user cancels.
+class _VerifyEmailDialog extends StatefulWidget {
+  final String email;
+  final Future<Map<String, dynamic>> Function(String code) register;
+
+  const _VerifyEmailDialog({required this.email, required this.register});
+
+  @override
+  State<_VerifyEmailDialog> createState() => _VerifyEmailDialogState();
+}
+
+class _VerifyEmailDialogState extends State<_VerifyEmailDialog> {
+  final _codeController = TextEditingController();
+  bool _isVerifying = false;
+  bool _isResending = false;
+  String? _error;
+  String? _info;
+  int _resendSeconds = 60;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  void _startCountdown() {
+    _timer?.cancel();
+    setState(() => _resendSeconds = 60);
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      if (_resendSeconds <= 1) {
+        t.cancel();
+        setState(() => _resendSeconds = 0);
+      } else {
+        setState(() => _resendSeconds--);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _verify() async {
+    final code = _codeController.text.trim();
+    if (code.length != 4) {
+      setState(() => _error = "Enter the 4-digit code");
+      return;
+    }
+    setState(() {
+      _isVerifying = true;
+      _error = null;
+      _info = null;
+    });
+    try {
+      final result = await widget.register(code);
+      if (!mounted) return;
+      final body = result["body"];
+      final isCodeError = body is Map && body["code_error"] == true;
+      if (result["statusCode"] == 400 && isCodeError) {
+        // Wrong / expired code: stay in the dialog
+        setState(() {
+          _error = body["error"];
+          _codeController.clear();
+        });
+      } else {
+        Navigator.pop(context, result);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = "Could not connect to server");
+    } finally {
+      if (mounted) setState(() => _isVerifying = false);
+    }
+  }
+
+  Future<void> _resend() async {
+    setState(() {
+      _isResending = true;
+      _error = null;
+      _info = null;
+    });
+    try {
+      final result = await ApiService.sendVerificationCode(widget.email);
+      if (!mounted) return;
+      if (result["statusCode"] == 200) {
+        _codeController.clear();
+        setState(() => _info = "A new code was sent. Check your inbox (and spam folder).");
+        _startCountdown();
+      } else {
+        setState(() => _error = result["body"]["error"] ?? "Could not resend code");
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = "Could not connect to server");
+    } finally {
+      if (mounted) setState(() => _isResending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("Verify your email"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            "We sent a 4-digit code to\n${widget.email}",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textGrey, fontSize: 13.5),
+          ),
+          const SizedBox(height: 18),
+          TextField(
+            controller: _codeController,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            maxLength: 4,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 14),
+            decoration: const InputDecoration(hintText: "••••", counterText: ""),
+            onChanged: (value) {
+              if (_error != null) setState(() => _error = null);
+              if (value.length == 4 && !_isVerifying) _verify();
+            },
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(_error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.errorRed, fontSize: 13)),
+          ],
+          if (_info != null) ...[
+            const SizedBox(height: 10),
+            Text(_info!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.confidenceGreen, fontSize: 13)),
+          ],
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: (_resendSeconds > 0 || _isResending) ? null : _resend,
+            child: Text(_resendSeconds > 0 ? "Resend code in ${_resendSeconds}s" : "Resend code"),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isVerifying ? null : () => Navigator.pop(context),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(minimumSize: const Size(120, 44)),
+          onPressed: _isVerifying ? null : _verify,
+          child: _isVerifying
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Text("Verify"),
+        ),
+      ],
     );
   }
 }

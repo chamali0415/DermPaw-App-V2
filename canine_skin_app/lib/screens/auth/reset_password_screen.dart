@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/widgets/dp_ui.dart';
 import 'login_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -63,52 +64,65 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Reset Password")),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text("A reset code was sent to ${widget.email}"),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _codeController,
-              decoration: const InputDecoration(labelText: "Reset Code"),
-              keyboardType: TextInputType.number,
+            const Center(child: DpIconTile(Icons.mark_email_read_outlined, size: 72)),
+            const SizedBox(height: 18),
+            DpPageHeader(
+              eyebrow: "Check your inbox",
+              title: "Enter your code",
+              subtitle: "A reset code was sent to ${widget.email}",
+              align: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _newPasswordController,
-              obscureText: _obscurePassword,
-              decoration: InputDecoration(
-                labelText: "New Password",
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            const SizedBox(height: 22),
+            DpCard(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const DpFieldLabel("Reset Code"),
+                  TextField(
+                    controller: _codeController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      hintText: "6-digit code",
+                      prefixIcon: Icon(Icons.pin_outlined),
+                    ),
                   ),
-                  onPressed: () {
-                    setState(() => _obscurePassword = !_obscurePassword);
-                  },
-                ),
+                  const DpFieldLabel("New Password"),
+                  TextField(
+                    controller: _newPasswordController,
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
+                      hintText: "Create a strong password",
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: dpMuted(context),
+                        ),
+                        onPressed: () {
+                          setState(() => _obscurePassword = !_obscurePassword);
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "Must be 8+ characters with uppercase, lowercase, number, and special character",
+                    style: TextStyle(fontSize: 12, color: dpMuted(context)),
+                  ),
+                  const SizedBox(height: 18),
+                  DpErrorText(_message),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _handleReset,
+                    child: _isLoading ? dpButtonSpinner : const Text("Reset Password"),
+                  ),
+                ],
               ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Text(
-                "Must be 8+ characters with uppercase, lowercase, number, and special character",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ),
-            const SizedBox(height: 24),
-            if (_message != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(_message!, style: const TextStyle(color: Colors.red)),
-              ),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _handleReset,
-              child: _isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text("Reset Password"),
             ),
           ],
         ),

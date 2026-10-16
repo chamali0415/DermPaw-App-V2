@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dp_ui.dart';
 import '../auth/login_screen.dart';
 
 /// Dog-owner view of vet reviews: only the owner's OWN scans that were sent
@@ -80,129 +81,129 @@ class _OwnerVetReviewsScreenState extends State<OwnerVetReviewsScreen> {
         onRefresh: _load,
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (_errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(_errorMessage!, style: const TextStyle(color: AppColors.errorRed)),
-                    ),
-                  Row(
-                    children: [
-                      _countChip("$reviewed Ready", AppColors.confidenceGreen),
-                      const SizedBox(width: 8),
-                      _countChip("$waiting Waiting", AppColors.amberText),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (_items.isEmpty && _errorMessage == null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 48),
-                      child: Column(
+            : _errorMessage != null
+                ? DpEmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: _errorMessage!,
+                    message: "Pull down to try again.",
+                    color: AppColors.errorRed,
+                  )
+                : _items.isEmpty
+                    ? const DpEmptyState(
+                        icon: Icons.medical_services_outlined,
+                        title: "No vet reviews yet",
+                        message:
+                            "After a scan, tap \"Request Veterinarian Review\" to send it to a vet.",
+                        color: AppColors.tealAccent,
+                      )
+                    : ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                         children: [
-                          Icon(Icons.medical_services_outlined, size: 48, color: AppColors.textGrey),
-                          const SizedBox(height: 12),
-                          const Text(
-                            "No vet reviews yet.\nAfter a scan, tap \"Request Vet Review\" to send it to a veterinarian.",
-                            textAlign: TextAlign.center,
+                          const DpPageHeader(
+                            eyebrow: "Veterinary care",
+                            title: "Your vet reviews",
+                            subtitle: "Cases you sent to a veterinarian and their decisions.",
                           ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _statTile(Icons.verified_outlined, "$reviewed", "Ready",
+                                    AppColors.confidenceGreen),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _statTile(
+                                    Icons.hourglass_empty, "$waiting", "Waiting", AppColors.orange),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          DpSectionLabel("Cases (${_items.length})"),
+                          ..._items.map(_buildCard),
                         ],
                       ),
-                    ),
-                  ..._items.map(_buildCard),
-                ],
-              ),
       ),
     );
   }
 
-  Widget _countChip(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
+  Widget _statTile(IconData icon, String value, String label, Color color) {
+    return DpCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          DpIconTile(icon, color: color, size: 40),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+              Text(label, style: TextStyle(fontSize: 12, color: dpMuted(context))),
+            ],
+          ),
+        ],
       ),
-      child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
     );
   }
 
   Widget _buildCard(dynamic item) {
     final review = item["vet_review"];
     final isReviewed = review != null;
-    final aiDisease = item["predicted_disease"] ?? "Unknown";
-    final confidence = ((item["confidence_score"] ?? 0) * 100).toStringAsFixed(1);
+    final String aiDisease = item["predicted_disease"] ?? "Unknown";
+    final double confidence = ((item["confidence_score"] ?? 0) as num).toDouble();
     final decision = isReviewed ? review["decision"] : null;
     final corrected = isReviewed && decision != aiDisease;
-    final comments = isReviewed ? (review["comments"] ?? "") : "";
+    final comments = isReviewed ? (review["comments"] ?? "").toString() : "";
 
-    return Card(
+    return DpCard(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                ApiService.imageFileUrl(item["image_id"]),
-                headers: ApiService.imageHeaders,
-                width: 64,
-                height: 64,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 64,
-                  height: 64,
-                  color: AppColors.primaryBlue.withOpacity(0.1),
-                  child: const Icon(Icons.pets, color: AppColors.primaryBlue),
+      accent: isReviewed ? (corrected ? AppColors.orange : AppColors.confidenceGreen) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              DpScanImage(imageId: item["image_id"], width: 60, height: 60),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(aiDisease,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Text(
+                      "AI ${(confidence * 100).toStringAsFixed(1)}%  •  ${_formatDate(item["result_date"])}",
+                      style: TextStyle(color: dpMuted(context), fontSize: 12),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(aiDisease,
-                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                      ),
-                      _countChip(isReviewed ? "Reviewed" : "Waiting",
-                          isReviewed ? AppColors.confidenceGreen : AppColors.amberText),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text("AI confidence: $confidence%  •  ${_formatDate(item["result_date"])}",
-                      style: TextStyle(color: AppColors.textGrey, fontSize: 12)),
-                  const SizedBox(height: 8),
-                  if (!isReviewed)
-                    const Text("A veterinarian has not reviewed this case yet.",
-                        style: TextStyle(fontSize: 13))
-                  else ...[
-                    Text(
-                      corrected
-                          ? "Vet corrected the diagnosis to: $decision"
-                          : "Vet confirmed the AI result: $decision",
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: corrected ? AppColors.amberText : AppColors.confidenceGreen,
-                      ),
-                    ),
-                    if (comments.toString().isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text("Vet's note: $comments", style: const TextStyle(fontSize: 13)),
-                    ],
-                  ],
-                ],
+              DpChip(
+                isReviewed ? "Reviewed" : "Waiting",
+                color: isReviewed ? AppColors.confidenceGreen : AppColors.orange,
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!isReviewed)
+            const DpNotice(
+              tone: DpTone.info,
+              icon: Icons.hourglass_empty,
+              text: "A veterinarian has not reviewed this case yet.",
+            )
+          else
+            DpNotice(
+              tone: corrected ? DpTone.warning : DpTone.success,
+              title: corrected
+                  ? "Vet corrected the diagnosis to: $decision"
+                  : "Vet confirmed the AI result: $decision",
+              text: comments.isNotEmpty ? "Vet's note: $comments" : "",
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

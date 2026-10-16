@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dp_ui.dart';
 import '../auth/login_screen.dart';
 
 class VetCaseHistoryScreen extends StatefulWidget {
@@ -147,8 +149,8 @@ class _VetCaseHistoryScreenState extends State<VetCaseHistoryScreen> {
           if (!_isLoading && _history.isNotEmpty)
             TextButton.icon(
               onPressed: _deleteAllCases,
-              icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
-              label: const Text("Delete all", style: TextStyle(color: Colors.red)),
+              icon: const Icon(Icons.delete_sweep_outlined, color: AppColors.errorRed),
+              label: const Text("Delete all", style: TextStyle(color: AppColors.errorRed)),
             ),
         ],
       ),
@@ -157,35 +159,98 @@ class _VetCaseHistoryScreenState extends State<VetCaseHistoryScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
-                ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
+                ? DpEmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: _errorMessage!,
+                    message: "Pull down to try again.",
+                    color: AppColors.errorRed,
+                  )
                 : _history.isEmpty
-                    ? const Center(child: Text("No reviewed cases yet"))
-                    : ListView.builder(
-                        itemCount: _history.length,
-                        itemBuilder: (context, index) {
-                          final entry = _history[index];
-                          final result = entry["result"] ?? {};
-                          final review = entry["review"] ?? {};
-
-                          return Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            child: ListTile(
-                              title: Text(result["predicted_disease"] ?? "Unknown"),
-                              subtitle: Text(
-                                "Decision: ${review["decision"] ?? "Unknown"}\n"
-                                "Confidence: ${((result["confidence_score"] ?? 0) * 100).toStringAsFixed(1)}%  •  "
-                                "${(result["result_date"] ?? "").toString().split("T").first}",
-                              ),
-                              isThreeLine: true,
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                tooltip: "Remove from history",
-                                onPressed: () => _deleteCase(entry),
-                              ),
-                            ),
-                          );
-                        },
+                    ? const DpEmptyState(
+                        icon: Icons.history,
+                        title: "No reviewed cases yet",
+                        message: "Cases you review will appear here.",
+                      )
+                    : ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                        children: [
+                          const DpPageHeader(
+                            eyebrow: "Veterinary portal",
+                            title: "Cases you reviewed",
+                            subtitle: "Removing a case here only clears your list. The owner keeps your review.",
+                          ),
+                          const SizedBox(height: 18),
+                          DpSectionLabel("Reviewed (${_history.length})"),
+                          ..._history.map(_buildCaseCard),
+                        ],
                       ),
+      ),
+    );
+  }
+
+  Widget _buildCaseCard(dynamic entry) {
+    final result = entry["result"] ?? {};
+    final review = entry["review"] ?? {};
+    final String ai = result["predicted_disease"] ?? "Unknown";
+    final String decision = review["decision"] ?? "Unknown";
+    final double confidence = ((result["confidence_score"] ?? 0) as num).toDouble();
+    final corrected = decision != ai;
+    final comments = (review["comments"] ?? "").toString();
+
+    return DpCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      accent: corrected ? AppColors.orange : AppColors.confidenceGreen,
+      padding: const EdgeInsets.fromLTRB(14, 14, 4, 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DpScanImage(imageId: result["image_id"], width: 60, height: 60),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(decision,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                const SizedBox(height: 4),
+                Text(
+                  "AI said $ai (${(confidence * 100).toStringAsFixed(1)}%)",
+                  style: TextStyle(fontSize: 12, color: dpMuted(context)),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    DpChip(
+                      corrected ? "Overridden" : "Confirmed",
+                      color: corrected ? AppColors.orange : AppColors.confidenceGreen,
+                      icon: corrected ? Icons.edit_outlined : Icons.check,
+                    ),
+                    Text(dpFormatDate(result["result_date"]),
+                        style: TextStyle(fontSize: 12, color: dpMuted(context))),
+                  ],
+                ),
+                if (comments.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text("Notes: $comments",
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12.5, color: dpMuted(context))),
+                ],
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: AppColors.errorRed),
+            tooltip: "Remove from history",
+            onPressed: () => _deleteCase(entry),
+          ),
+        ],
       ),
     );
   }

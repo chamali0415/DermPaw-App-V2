@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dp_ui.dart';
 import '../auth/login_screen.dart';
 
 class RefineSymptomsScreen extends StatefulWidget {
@@ -170,83 +171,34 @@ class _RefineSymptomsScreenState extends State<RefineSymptomsScreen> {
     final sortedProbabilities = rawProbabilities.entries.toList()
       ..sort((a, b) => (b.value as num).compareTo(a.value as num));
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const Text("Refined Prediction",
-                style: TextStyle(fontSize: 13, color: AppColors.textGrey)),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 100,
-              width: 100,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    height: 100,
-                    width: 100,
-                    child: CircularProgressIndicator(
-                      value: confidence,
-                      strokeWidth: 8,
-                      backgroundColor: const Color(0xFFE5E7EB),
-                      color: needsReview
-                          ? AppColors.amberText
-                          : AppColors.confidenceGreen,
-                    ),
-                  ),
-                  Text("${(confidence * 100).toStringAsFixed(0)}%",
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(disease, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-            ...sortedProbabilities.map((entry) {
-              final isTop = entry.key == sortedProbabilities.first.key;
-              final pct = (entry.value as num).toDouble();
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(entry.key,
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: isTop ? FontWeight.w700 : FontWeight.w500,
-                            )),
-                        Text("${pct.toStringAsFixed(0)}%",
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: isTop ? FontWeight.w700 : FontWeight.w500,
-                            )),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: pct / 100,
-                        minHeight: 6,
-                        backgroundColor: const Color(0xFFE5E7EB),
-                        color: isTop
-                            ? AppColors.confidenceGreen
-                            : AppColors.primaryBlue.withOpacity(0.45),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
+    final color = needsReview ? AppColors.orange : AppColors.confidenceGreen;
+    return DpCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Text("Refined Prediction", style: TextStyle(fontSize: 13, color: dpMuted(context))),
+          const SizedBox(height: 14),
+          DpConfidenceRing(confidence: confidence, color: color, size: 104),
+          const SizedBox(height: 12),
+          Text(disease,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          DpChip(
+            _selectedSymptoms.isEmpty
+                ? "AI result only"
+                : "Using ${_selectedSymptoms.length} symptom${_selectedSymptoms.length == 1 ? '' : 's'}",
+            color: AppColors.tealAccent,
+          ),
+          const SizedBox(height: 18),
+          const Divider(),
+          const SizedBox(height: 14),
+          ...sortedProbabilities.map((entry) => DpProgressRow(
+                label: entry.key,
+                percent: (entry.value as num).toDouble(),
+                highlight: entry.key == sortedProbabilities.first.key,
+              )),
+        ],
       ),
     );
   }
@@ -272,20 +224,29 @@ class _RefineSymptomsScreenState extends State<RefineSymptomsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  "Select any symptoms you notice on your dog",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                const DpPageHeader(
+                  eyebrow: "Refine prediction",
+                  title: "What do you notice?",
+                  subtitle: "Tick the symptoms you see on your dog. The example photos can help you decide.",
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  "Comparing to the example photos below can help you decide.",
-                  style: TextStyle(color: AppColors.textGrey, fontSize: 13),
+                const SizedBox(height: 14),
+                DpSectionLabel(
+                  "Symptoms",
+                  trailing: _selectedSymptoms.isEmpty
+                      ? null
+                      : DpChip("${_selectedSymptoms.length} selected", icon: Icons.check),
                 ),
-                const SizedBox(height: 16),
                 ..._symptomLabels.entries.map((entry) {
                   final isSelected = _selectedSymptoms.contains(entry.key);
                   return Card(
                     margin: const EdgeInsets.only(bottom: 14),
+                    color: isSelected ? AppColors.primaryBlue.withOpacity(0.06) : null,
+                    shape: isSelected
+                        ? RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: const BorderSide(color: AppColors.primaryBlue, width: 1.8),
+                          )
+                        : null,
                     child: Padding(
                       padding: const EdgeInsets.all(10),
                       child: Column(
@@ -322,7 +283,7 @@ class _RefineSymptomsScreenState extends State<RefineSymptomsScreen> {
                   onPressed: (_selectedSymptoms.isEmpty || _isRefining)
                       ? null
                       : _getRefinedPrediction,
-                  child: Text(_isRefining ? "Refining..." : "Get Refined Prediction"),
+                  child: _isRefining ? dpButtonSpinner : const Text("Get Refined Prediction"),
                 ),
                 if (_currentData["probabilities"] != null) ...[
                   const SizedBox(height: 20),

@@ -13,6 +13,19 @@ class ApiService {
   static String? authToken;
   static String? currentUserName;
   static bool currentUserIsVet = false;
+  static int? currentUserId;
+  static bool currentUserHasPicture = false;
+  static int currentUserPictureVersion = 0;
+
+  /// Keep the logged-in user's details (from login / register / profile).
+  static void rememberUser(dynamic user) {
+    if (user is! Map) return;
+    currentUserName = user["name"] ?? currentUserName;
+    currentUserIsVet = user["is_vet"] == true;
+    currentUserId = user["user_id"] ?? currentUserId;
+    currentUserHasPicture = user["has_profile_picture"] == true;
+    currentUserPictureVersion = user["profile_picture_version"] ?? 0;
+  }
 
   /// Decodes a JSON body safely. If the server returned an HTML error page
   /// (e.g. nginx 502/504 or a Flask crash), we still get a usable map instead
@@ -58,8 +71,7 @@ class ApiService {
     final decoded = _decode(response);
     if (response.statusCode == 201) {
       authToken = decoded["access_token"];
-      currentUserName = decoded["user"]["name"];
-      currentUserIsVet = decoded["user"]["is_vet"] == true;
+      rememberUser(decoded["user"]);
     }
     return {"statusCode": response.statusCode, "body": decoded};
   }
@@ -76,8 +88,7 @@ class ApiService {
     final decoded = _decode(response);
     if (response.statusCode == 200) {
       authToken = decoded["access_token"];
-      currentUserName = decoded["user"]["name"];
-      currentUserIsVet = decoded["user"]["is_vet"] == true;
+      rememberUser(decoded["user"]);
     }
     return {"statusCode": response.statusCode, "body": decoded};
   }
@@ -85,6 +96,9 @@ class ApiService {
     authToken = null;
     currentUserName = null;
     currentUserIsVet = false;
+    currentUserId = null;
+    currentUserHasPicture = false;
+    currentUserPictureVersion = 0;
   }
 
  static Future<Map<String, dynamic>> forgotPassword({
@@ -361,5 +375,33 @@ static Future<Map<String, dynamic>> getPendingReviews() async {
       headers: _authHeaders,
     ).timeout(requestTimeout);
     return {"statusCode": response.statusCode, "body": _decode(response)};
+  }
+
+  // ------------------------------------------------------- profile picture
+
+  /// URL of a user's profile picture. [version] changes when the picture
+  /// changes, so the app does not show an old cached photo.
+  static String profilePictureUrl(int userId, int version) =>
+      "$baseUrl/users/$userId/picture?v=$version";
+
+  static Future<Map<String, dynamic>> uploadProfilePicture(File imageFile) async {
+    final request = http.MultipartRequest("POST", Uri.parse("$baseUrl/profile/picture"));
+    request.headers["Authorization"] = "Bearer $authToken";
+    request.files.add(await http.MultipartFile.fromPath("file", imageFile.path));
+    final streamed = await request.send().timeout(uploadTimeout);
+    final response = await http.Response.fromStream(streamed);
+    final decoded = _decode(response);
+    if (response.statusCode == 200) rememberUser(decoded["user"]);
+    return {"statusCode": response.statusCode, "body": decoded};
+  }
+
+  static Future<Map<String, dynamic>> deleteProfilePicture() async {
+    final response = await http.delete(
+      Uri.parse("$baseUrl/profile/picture"),
+      headers: _authHeaders,
+    ).timeout(requestTimeout);
+    final decoded = _decode(response);
+    if (response.statusCode == 200) rememberUser(decoded["user"]);
+    return {"statusCode": response.statusCode, "body": decoded};
   }
 }

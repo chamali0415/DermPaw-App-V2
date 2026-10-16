@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_logo.dart';
+import '../../core/widgets/dp_ui.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../home/home_screen.dart';
@@ -76,121 +77,122 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Center(child: AppLogo()),
-              const SizedBox(height: 16),
-              const Text(
-                "Welcome Back",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+              // ---- Brand bar
+              Row(
+                children: [
+                  const AppLogo(size: 44),
+                  const SizedBox(width: 12),
+                  const Text("DermPaw",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  DpChip("AI skin scan", color: AppColors.tealAccent, icon: Icons.auto_awesome),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                "Sign in to continue to DermPaw",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textGrey, fontSize: 14),
-              ),
-              const SizedBox(height: 32),
-
-              const Text("Email", style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(hintText: "your.email@example.com"),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-
-              const Text("Password", style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  hintText: "Enter your password",
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      color: AppColors.textGrey,
-                    ),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
-                    );
-                  },
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                  child: const Text("Forgot Password?"),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    _errorMessage!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.errorRed),
-                  ),
-                ),
-
-              ElevatedButton(
-                onPressed: _isLoading ? null : _handleLogin,
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text("Login"),
-              ),
-              const SizedBox(height: 16),
-
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                    );
-                  },
-                  child: const Text("Don't have an account? Sign up"),
-                ),
-              ),
-
               const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryBlue.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.primaryBlue.withOpacity(0.15)),
-                ),
-                child: RichText(
-                  text: TextSpan(
-                    style: TextStyle(color: AppColors.primaryBlueDark, fontSize: 12.5, height: 1.4),
-                    children: const [
-                      TextSpan(text: "Demo: ", style: TextStyle(fontWeight: FontWeight.w800)),
-                      TextSpan(
-                        text:
-                            "Use any email to login as a dog owner, or use vet@dermpaw.com to access the veterinarian dashboard.",
+
+              // ---- Hero image (same as the dashboard banner)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: AspectRatio(
+                  aspectRatio: 16 / 8,
+                  child: Image.asset(
+                    "assets/images/dashboard_hero.jpg",
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                        ),
                       ),
-                    ],
+                      child: const Icon(Icons.pets, color: Colors.white, size: 56),
+                    ),
                   ),
                 ),
+              ),
+              const SizedBox(height: 22),
+
+              const DpPageHeader(
+                eyebrow: "Pet Health Monitor",
+                title: "Welcome back",
+                subtitle: "Sign in to check on your dog's skin health.",
+              ),
+              const SizedBox(height: 18),
+
+              // ---- Form card
+              DpCard(
+                padding: const EdgeInsets.fromLTRB(18, 4, 18, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const DpFieldLabel("Email"),
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        hintText: "your.email@example.com",
+                        prefixIcon: Icon(Icons.mail_outline),
+                      ),
+                    ),
+                    const DpFieldLabel("Password"),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      onSubmitted: (_) {
+                        if (!_isLoading) _handleLogin();
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Enter your password",
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            color: dpMuted(context),
+                          ),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                          );
+                        },
+                        child: const Text("Forgot Password?"),
+                      ),
+                    ),
+                    DpErrorText(_errorMessage),
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _handleLogin,
+                      child: _isLoading ? dpButtonSpinner : const Text("Login"),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ---- Sign up link
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text("Don't have an account?", style: TextStyle(color: dpMuted(context))),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                      );
+                    },
+                    child: const Text("Sign up"),
+                  ),
+                ],
               ),
             ],
           ),

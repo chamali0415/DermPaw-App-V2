@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dp_ui.dart';
 import '../auth/login_screen.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -85,71 +87,85 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Pending Vet Verifications")),
+      appBar: AppBar(title: const Text("Verify Vets")),
       body: RefreshIndicator(
         onRefresh: _loadPendingVets,
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
-                ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
+                ? DpEmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: _errorMessage!,
+                    message: "Pull down to try again.",
+                    color: AppColors.errorRed,
+                  )
                 : _pendingVets.isEmpty
-                    ? ListView(
-                        children: const [
-                          Padding(
-                            padding: EdgeInsets.symmetric(vertical: 64),
-                            child: Center(child: Text("No vets pending verification")),
-                          ),
-                        ],
+                    ? const DpEmptyState(
+                        icon: Icons.verified_user_outlined,
+                        title: "No vets pending verification",
+                        message: "New veterinarian registrations will appear here.",
+                        color: AppColors.purple,
                       )
-                    : ListView.builder(
-                        itemCount: _pendingVets.length,
-                        itemBuilder: (context, index) {
-                          final vet = _pendingVets[index];
-                          final userId = vet["user_id"];
-                          final isVerifying = _verifying.contains(userId);
-
-                          return Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    vet["name"] ?? "Unknown",
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold, fontSize: 16),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(vet["email"] ?? "",
-                                      style: const TextStyle(color: Colors.grey)),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "B.V.Sc. Registration No: ${vet["vet_licence_no"] ?? "N/A"}",
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      onPressed: isVerifying
-                                          ? null
-                                          : () => _verifyVet(userId, vet["name"] ?? "This vet"),
-                                      icon: isVerifying
-                                          ? const SizedBox(
-                                              height: 16,
-                                              width: 16,
-                                              child: CircularProgressIndicator(strokeWidth: 2),
-                                            )
-                                          : const Icon(Icons.check_circle_outline, size: 18),
-                                      label: Text(isVerifying ? "Verifying..." : "Verify"),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                    : ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                        children: [
+                          const DpPageHeader(
+                            eyebrow: "Administrator",
+                            title: "Pending verifications",
+                            subtitle: "Check each B.V.Sc. number against the Veterinary Council of Sri Lanka register before verifying.",
+                          ),
+                          const SizedBox(height: 18),
+                          DpSectionLabel("Waiting (${_pendingVets.length})"),
+                          ..._pendingVets.map(_buildVetCard),
+                        ],
                       ),
+      ),
+    );
+  }
+
+  Widget _buildVetCard(dynamic vet) {
+    final userId = vet["user_id"];
+    final isVerifying = _verifying.contains(userId);
+    final String name = vet["name"] ?? "Unknown";
+
+    return DpCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              DpInitialAvatar(name: name, size: 48, color: AppColors.purple),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                    Text(vet["email"] ?? "",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: dpMuted(context), fontSize: 13)),
+                  ],
+                ),
+              ),
+              const DpChip("Pending", color: AppColors.orange),
+            ],
+          ),
+          const SizedBox(height: 10),
+          DpInfoRow(
+            icon: Icons.badge_outlined,
+            label: "B.V.Sc. Reg. No.",
+            value: (vet["vet_licence_no"] ?? "N/A").toString(),
+          ),
+          const SizedBox(height: 10),
+          ElevatedButton.icon(
+            onPressed: isVerifying ? null : () => _verifyVet(userId, name),
+            icon: isVerifying ? dpButtonSpinner : const Icon(Icons.check_circle_outline),
+            label: Text(isVerifying ? "Verifying..." : "Verify"),
+          ),
+        ],
       ),
     );
   }

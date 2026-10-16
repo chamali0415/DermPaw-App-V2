@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dp_ui.dart';
 import '../auth/login_screen.dart';
 import 'refine_symptoms_screen.dart';
 
@@ -408,7 +409,7 @@ class _UploadScreenState extends State<UploadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Analyze Skin Condition")),
+      appBar: AppBar(title: Text(_showResult ? "Scan Result" : "New Scan")),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -424,46 +425,62 @@ class _UploadScreenState extends State<UploadScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          "Analyze Skin Condition",
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          "Upload a clear photo of your dog's skin condition",
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.textGrey, fontSize: 14),
+        const DpPageHeader(
+          eyebrow: "AI skin scan",
+          title: "Analyze skin condition",
+          subtitle: "Upload a clear, close-up photo of the affected area.",
         ),
         const SizedBox(height: 20),
         if (_selectedImage == null)
-          GestureDetector(
-            onTap: _showImageSourceSheet,
-            child: Container(
-              height: 230,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: AppColors.primaryBlue.withOpacity(0.35),
-                  width: 1.4,
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: AppColors.primaryBlue.withOpacity(0.1),
-                    child: const Icon(Icons.camera_alt_outlined,
-                        color: AppColors.primaryBlue, size: 26),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(24),
+              onTap: _showImageSourceSheet,
+              child: Ink(
+                height: 250,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.gradientStart.withOpacity(0.10),
+                      AppColors.gradientEnd.withOpacity(0.10),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  const Text("Tap to Capture or Upload",
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                  const SizedBox(height: 4),
-                  Text("Take a photo or choose from gallery",
-                      style: TextStyle(color: AppColors.textGrey, fontSize: 12)),
-                ],
+                  border: Border.all(color: AppColors.primaryBlue.withOpacity(0.35), width: 1.4),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                        ),
+                      ),
+                      child: const Icon(Icons.photo_camera_outlined, color: Colors.white, size: 32),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text("Tap to capture or upload",
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                    const SizedBox(height: 4),
+                    Text("Take a photo or choose one from your gallery",
+                        style: TextStyle(color: dpMuted(context), fontSize: 12.5)),
+                    const SizedBox(height: 14),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        DpChip("Camera", icon: Icons.camera_alt_outlined),
+                        SizedBox(width: 8),
+                        DpChip("Gallery", icon: Icons.photo_library_outlined),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           )
@@ -472,78 +489,73 @@ class _UploadScreenState extends State<UploadScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(24),
                 child: Stack(
                   children: [
                     Image.file(_selectedImage!,
-                        height: 260, width: double.infinity, fit: BoxFit.cover),
+                        height: 280, width: double.infinity, fit: BoxFit.cover),
                     Positioned(
-                      top: 10,
-                      right: 10,
+                      top: 12,
+                      right: 12,
                       child: GestureDetector(
                         onTap: () => setState(() => _selectedImage = null),
                         child: CircleAvatar(
-                          radius: 16,
+                          radius: 17,
                           backgroundColor: Colors.black.withOpacity(0.5),
-                          child: const Icon(Icons.close, color: Colors.white, size: 16),
+                          child: const Icon(Icons.close, color: Colors.white, size: 17),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 12,
+                      bottom: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle, color: Colors.white, size: 14),
+                            SizedBox(width: 5),
+                            Text("Photo ready",
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                          ],
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                _selectedImage!.path.split(Platform.pathSeparator).last,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textGrey, fontSize: 12),
-              ),
               const SizedBox(height: 16),
-              ElevatedButton(
+              ElevatedButton.icon(
                 onPressed: _isLoading ? null : _submit,
-                child: const Text("Submit for Analysis"),
+                icon: const Icon(Icons.auto_awesome),
+                label: const Text("Analyze Photo"),
               ),
               const SizedBox(height: 10),
-              OutlinedButton(
+              OutlinedButton.icon(
                 onPressed: () => setState(() => _selectedImage = null),
-                child: const Text("Retake Photo"),
+                icon: const Icon(Icons.refresh),
+                label: const Text("Choose Another Photo"),
               ),
             ],
           ),
         const SizedBox(height: 20),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.amberBg,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.amberBorder),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.lightbulb_outline, size: 16, color: AppColors.amberText),
-                  const SizedBox(width: 6),
-                  Text("Tips for best results:",
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700, color: AppColors.amberText, fontSize: 13)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ...[
-                "Use good lighting",
-                "Focus clearly on the affected area",
-                "Accepted formats: JPG, PNG",
-                "Max size: 10MB",
-              ].map((t) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text("•  $t",
-                        style: TextStyle(color: AppColors.amberText, fontSize: 12.5)),
-                  )),
-            ],
-          ),
+        const DpNotice(
+          tone: DpTone.info,
+          icon: Icons.lightbulb_outline,
+          title: "Tips for best results",
+          text: "",
+          bullets: [
+            "Use good, natural lighting",
+            "Focus clearly on the affected area",
+            "Accepted formats: JPG, PNG",
+            "Max size: 10MB",
+          ],
         ),
       ],
     );
@@ -551,9 +563,10 @@ class _UploadScreenState extends State<UploadScreen> {
 
   Widget _buildResultView() {
     final data = _resultData!;
-    final confidence = (data["confidence_score"] ?? 0).toDouble();
-    final disease = data["predicted_disease"] ?? "Unknown";
+    final double confidence = ((data["confidence_score"] ?? 0) as num).toDouble();
+    final String disease = data["predicted_disease"] ?? "Unknown";
     final needsReview = data["needs_vet_review"] == true;
+    final color = needsReview ? AppColors.orange : dpConfidenceColor(confidence);
 
     final Map<String, dynamic> rawProbabilities =
         (data["probabilities"] as Map<String, dynamic>?) ?? {};
@@ -561,207 +574,98 @@ class _UploadScreenState extends State<UploadScreen> {
       ..sort((a, b) => (b.value as num).compareTo(a.value as num));
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        CircleAvatar(
-          radius: 24,
-          backgroundColor: needsReview
-              ? AppColors.amberBg
-              : AppColors.confidenceGreen.withOpacity(0.15),
-          child: Icon(
-            needsReview ? Icons.help_outline : Icons.check,
-            color: needsReview ? AppColors.amberText : AppColors.confidenceGreen,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          needsReview ? "Not Sure — Possibly $disease" : "Analysis Complete",
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        DpPageHeader(
+          eyebrow: needsReview ? "Not sure" : "Analysis complete",
+          title: needsReview ? "Possibly $disease" : disease,
+          subtitle: needsReview
+              ? "The AI isn't confident about this photo. A vet review is recommended."
+              : "Here is what the AI found in your photo.",
         ),
         const SizedBox(height: 16),
         if (_selectedImage != null)
           ClipRRect(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(24),
             child: Image.file(_selectedImage!,
                 height: 220, width: double.infinity, fit: BoxFit.cover),
           ),
         const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                const Text("Predicted Condition",
-                    style: TextStyle(color: AppColors.textGrey, fontSize: 13)),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 110,
-                  width: 110,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        height: 110,
-                        width: 110,
-                        child: CircularProgressIndicator(
-                          value: confidence,
-                          strokeWidth: 8,
-                          backgroundColor: const Color(0xFFE5E7EB),
-                          color: needsReview
-                              ? AppColors.amberText
-                              : AppColors.confidenceGreen,
-                        ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text("${(confidence * 100).toStringAsFixed(0)}%",
-                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                          const Text("Confidence",
-                              style: TextStyle(fontSize: 11, color: AppColors.textGrey)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(disease,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                if (sortedProbabilities.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  const Divider(),
-                  const SizedBox(height: 12),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text("Confidence Breakdown",
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                  ),
-                  const SizedBox(height: 12),
-                  ...sortedProbabilities.map((entry) {
-                    final isTop = entry.key == sortedProbabilities.first.key;
-                    final pct = (entry.value as num).toDouble();
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(entry.key,
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: isTop ? FontWeight.w700 : FontWeight.w500,
-                                  )),
-                              Text("${pct.toStringAsFixed(0)}%",
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: isTop ? FontWeight.w700 : FontWeight.w500,
-                                  )),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: LinearProgressIndicator(
-                              value: pct / 100,
-                              minHeight: 6,
-                              backgroundColor: const Color(0xFFE5E7EB),
-                              color: isTop
-                                  ? AppColors.confidenceGreen
-                                  : AppColors.primaryBlue.withOpacity(0.45),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: _openRefineScreen,
-            child: const Text("Refine Prediction"),
-          ),
-        ),
-        const SizedBox(height: 16),
-        if (needsReview)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.amberBg,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.amberBorder),
-            ),
-            child: Text(
-              "The model is not confident about this photo. Try a closer, sharper photo in daylight, and ask a vet to check.",
-              style: TextStyle(color: AppColors.amberText, fontSize: 12.5),
-            ),
-          ),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.amberBg,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.amberBorder),
-          ),
+        DpCard(
+          accent: color,
+          padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.amberText),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        style: TextStyle(color: AppColors.amberText, fontSize: 12.5),
-                        children: const [
-                          TextSpan(
-                              text: "NOTICE: ", style: TextStyle(fontWeight: FontWeight.w800)),
-                          TextSpan(
-                              text:
-                                  "This result is generated by AI and is for informational purposes only."),
-                        ],
-                      ),
-                    ),
-                  ),
+                  Text("PREDICTED CONDITION",
+                      style: TextStyle(
+                        color: dpMuted(context),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                      )),
+                  const Spacer(),
+                  DpChip(dpConfidenceLabel(confidence), color: color),
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                "It is NOT a definitive diagnosis. Always consult a veterinarian for treatment.",
-                style: TextStyle(color: AppColors.amberText, fontSize: 12.5),
-              ),
+              const SizedBox(height: 16),
+              DpConfidenceRing(confidence: confidence, color: color),
+              const SizedBox(height: 12),
+              Text(disease,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              if (sortedProbabilities.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const Divider(),
+                const SizedBox(height: 14),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Confidence Breakdown",
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(height: 12),
+                ...sortedProbabilities.map((entry) => DpProgressRow(
+                      label: entry.key,
+                      percent: (entry.value as num).toDouble(),
+                      highlight: entry.key == sortedProbabilities.first.key,
+                    )),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.tealAccent),
-            onPressed: _reviewRequested ? null : _requestVetReview,
-            child: Text(
-                _reviewRequested ? "Vet Review Requested ✓" : "Request Veterinarian Review"),
+        const SizedBox(height: 16),
+        // Blue main button, same as the other primary buttons
+        ElevatedButton.icon(
+          onPressed: _openRefineScreen,
+          icon: const Icon(Icons.tune),
+          label: const Text("Refine Prediction with Symptoms"),
+        ),
+        const SizedBox(height: 16),
+        if (needsReview) ...[
+          const DpNotice(
+            tone: DpTone.warning,
+            text: "The model is not confident about this photo. Try a closer, sharper photo in daylight, and ask a vet to check.",
           ),
+          const SizedBox(height: 12),
+        ],
+        const DpNotice(
+          tone: DpTone.info,
+          icon: Icons.health_and_safety_outlined,
+          title: "AI result - not a diagnosis",
+          text: "This result is for information only. Always consult a veterinarian for treatment.",
+        ),
+        const SizedBox(height: 20),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.tealAccent),
+          onPressed: _reviewRequested ? null : _requestVetReview,
+          icon: Icon(_reviewRequested ? Icons.check : Icons.medical_services_outlined),
+          label: Text(_reviewRequested ? "Vet Review Requested" : "Request Veterinarian Review"),
         ),
         const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _reset,
-            child: const Text("Done"),
-          ),
+        OutlinedButton(
+          onPressed: _reset,
+          child: const Text("Done"),
         ),
       ],
     );

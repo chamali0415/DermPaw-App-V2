@@ -18,6 +18,9 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Optional profile picture (file path on the server) + when it last changed
+    profile_image_path = db.Column(db.String(255), nullable=True)
+    profile_image_updated = db.Column(db.DateTime, nullable=True)
 
     def to_dict(self):
         return {
@@ -30,6 +33,10 @@ class User(db.Model):
             "is_verified": self.is_verified,
             "is_admin": self.is_admin,
             "is_active": self.is_active,
+            "has_profile_picture": bool(self.profile_image_path),
+            # Changes every time the picture changes, so the app reloads it
+            "profile_picture_version": int(self.profile_image_updated.timestamp())
+            if self.profile_image_updated else 0,
         }
     
 class Dog(db.Model):
@@ -128,7 +135,8 @@ class VetReview(db.Model):
             "result_id": self.result_id,
             "vet_id": self.vet_id,
             "decision": self.decision,
-            "comments": self.comments
+            "comments": self.comments,
+            "review_date": self.review_date.isoformat() if self.review_date else None,
         }
 
 class AppReview(db.Model):

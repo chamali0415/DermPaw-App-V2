@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dp_ui.dart';
 import '../auth/login_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -186,8 +188,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
           if (!_isLoading && _results.isNotEmpty)
             TextButton.icon(
               onPressed: _deleteAllCases,
-              icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
-              label: const Text("Delete all", style: TextStyle(color: Colors.red)),
+              icon: const Icon(Icons.delete_sweep_outlined, color: AppColors.errorRed),
+              label: const Text("Delete all", style: TextStyle(color: AppColors.errorRed)),
             ),
         ],
       ),
@@ -196,232 +198,170 @@ class _HistoryScreenState extends State<HistoryScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
-                ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
+                ? DpEmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: _errorMessage!,
+                    message: "Pull down to try again.",
+                    color: AppColors.errorRed,
+                  )
                 : _results.isEmpty
-                    ? const Center(child: Text("No diagnosis history yet"))
-                    : ListView.builder(
-                        itemCount: _results.length,
-                        itemBuilder: (context, index) {
-                          final item = _results[index];
-                          final vetReview = item["vet_review"];
-                          final hasReview = vetReview != null;
-
-                          return Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            child: ExpansionTile(
-                              title: Text(item["predicted_disease"] ?? "Unknown"),
-                              subtitle: Text(
-                                "Confidence: ${(item["confidence_score"] * 100).toStringAsFixed(1)}%",
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (hasReview)
-                                    Chip(
-                                      label: const Text(
-                                        "Vet Reviewed",
-                                        style: TextStyle(fontSize: 11, color: Colors.white),
-                                      ),
-                                      backgroundColor: Colors.green[600],
-                                      padding: EdgeInsets.zero,
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    )
-                                  else if (item["review_requested"] == true)
-                                    Chip(
-                                      label: const Text(
-                                        "Pending Review",
-                                        style: TextStyle(fontSize: 11, color: Colors.white),
-                                      ),
-                                      backgroundColor: Colors.orange[600],
-                                      padding: EdgeInsets.zero,
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                    tooltip: "Delete case",
-                                    onPressed: () => _deleteCase(item),
-                                  ),
-                                ],
-                              ),
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      if (item["image_id"] != null) ...[
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: Image.network(
-                                            "${ApiService.baseUrl}/images/${item["image_id"]}/file",
-                                            headers: {
-                                              if (ApiService.authToken != null)
-                                                "Authorization": "Bearer ${ApiService.authToken}",
-                                            },
-                                            fit: BoxFit.cover,
-                                            width: double.infinity,
-                                            height: 220,
-                                            loadingBuilder: (context, child, progress) {
-                                              if (progress == null) return child;
-                                              return Container(
-                                                height: 220,
-                                                alignment: Alignment.center,
-                                                child: const CircularProgressIndicator(),
-                                              );
-                                            },
-                                            errorBuilder: (context, error, stackTrace) => Container(
-                                              height: 220,
-                                              alignment: Alignment.center,
-                                              color: Colors.grey[300],
-                                              child: const Text("Image could not be loaded"),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                      ],
-                                      Text(
-                                        "Date: ${(item["result_date"] ?? "").toString().split("T").first}",
-                                        style: const TextStyle(color: Colors.grey),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      if (hasReview) ...[
-                                        const Divider(),
-                                        const SizedBox(height: 8),
-                                        const Text(
-                                          "Veterinarian's Review",
-                                          style: TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        if (vetReview["decision"] != item["predicted_disease"])
-                                          Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.orange[50],
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(color: Colors.orange[200]!),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Icon(Icons.info_outline,
-                                                    size: 16, color: Colors.orange[800]),
-                                                const SizedBox(width: 6),
-                                                Expanded(
-                                                  child: Text(
-                                                    "The vet corrected the diagnosis to: ${vetReview["decision"]}",
-                                                    style: TextStyle(
-                                                        fontSize: 13, color: Colors.orange[900]),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          )
-                                        else
-                                          Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green[50],
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(color: Colors.green[200]!),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Icon(Icons.check_circle_outline,
-                                                    size: 16, color: Colors.green[800]),
-                                                const SizedBox(width: 6),
-                                                const Expanded(
-                                                  child: Text(
-                                                    "Vet confirmed the AI's diagnosis",
-                                                    style: TextStyle(fontSize: 13),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        if ((vetReview["comments"] ?? "")
-                                            .toString()
-                                            .isNotEmpty) ...[
-                                          const SizedBox(height: 8),
-                                          const Text(
-                                            "Treatment Notes:",
-                                            style: TextStyle(fontWeight: FontWeight.w600),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(vetReview["comments"]),
-                                        ],
-                                      ] else if (item["review_requested"] == true) ...[
-                                        const Divider(),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            Icon(Icons.hourglass_empty,
-                                                size: 16, color: Colors.grey[600]),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              "Waiting for a vet to review this case",
-                                              style: TextStyle(color: Colors.grey[600]),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                      const Divider(),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        "Your Feedback",
-                                        style: TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      if (_submittedFeedback.contains(item["result_id"]))
-                                        Row(
-                                          children: [
-                                            Icon(Icons.check_circle_outline,
-                                                size: 16, color: Colors.green[700]),
-                                            const SizedBox(width: 6),
-                                            const Text(
-                                              "Feedback submitted",
-                                              style: TextStyle(
-                                                  color: Colors.green,
-                                                  fontStyle: FontStyle.italic),
-                                            ),
-                                          ],
-                                        )
-                                      else ...[
-                                        TextField(
-                                          controller: _controllerFor(item["result_id"]),
-                                          maxLines: 3,
-                                          decoration: const InputDecoration(
-                                            border: OutlineInputBorder(),
-                                            hintText:
-                                                "How was your experience? Any comments on this diagnosis?",
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Align(
-                                          alignment: Alignment.centerRight,
-                                          child: ElevatedButton(
-                                            onPressed: _submittingFeedback
-                                                    .contains(item["result_id"])
-                                                ? null
-                                                : () => _submitFeedback(item["result_id"]),
-                                            child: _submittingFeedback
-                                                    .contains(item["result_id"])
-                                                ? const SizedBox(
-                                                    height: 16,
-                                                    width: 16,
-                                                    child: CircularProgressIndicator(
-                                                        strokeWidth: 2),
-                                                  )
-                                                : const Text("Submit Feedback"),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                    ? const DpEmptyState(
+                        icon: Icons.assignment_outlined,
+                        title: "No diagnosis history yet",
+                        message: "Your AI skin scans will appear here after you upload a photo.",
+                      )
+                    : ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                        children: [
+                          _buildSummary(),
+                          const SizedBox(height: 20),
+                          DpSectionLabel("All scans (${_results.length})"),
+                          ..._results.map(_buildCaseCard),
+                        ],
                       ),
+      ),
+    );
+  }
+
+  Widget _buildSummary() {
+    final reviewed = _results.where((r) => r["vet_review"] != null).length;
+    final pending = _results
+        .where((r) => r["vet_review"] == null && r["review_requested"] == true)
+        .length;
+    return Row(
+      children: [
+        Expanded(child: _statTile(Icons.description_outlined, "${_results.length}", "Total scans", AppColors.primaryBlue)),
+        const SizedBox(width: 10),
+        Expanded(child: _statTile(Icons.verified_outlined, "$reviewed", "Vet reviewed", AppColors.tealAccent)),
+        const SizedBox(width: 10),
+        Expanded(child: _statTile(Icons.hourglass_empty, "$pending", "Waiting", AppColors.orange)),
+      ],
+    );
+  }
+
+  Widget _statTile(IconData icon, String value, String label, Color color) {
+    return DpCard(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DpIconTile(icon, color: color, size: 34),
+          const SizedBox(height: 10),
+          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          Text(label, style: TextStyle(fontSize: 12, color: dpMuted(context))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCaseCard(dynamic item) {
+    final vetReview = item["vet_review"];
+    final hasReview = vetReview != null;
+    final String disease = item["predicted_disease"] ?? "Unknown";
+    final double confidence = ((item["confidence_score"] ?? 0) as num).toDouble();
+    final parts = RegExp(r'^(.*?)\s*\((.*)\)\s*$').firstMatch(disease);
+    final title = parts != null ? parts.group(1)! : disease;
+    final int resultId = item["result_id"];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+          leading: DpScanImage(imageId: item["image_id"], width: 54, height: 54),
+          title: Text(title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                DpChip("${(confidence * 100).toStringAsFixed(1)}%",
+                    color: dpConfidenceColor(confidence)),
+                if (hasReview)
+                  const DpChip("Vet reviewed", color: AppColors.confidenceGreen, icon: Icons.verified_outlined)
+                else if (item["review_requested"] == true)
+                  const DpChip("Pending review", color: AppColors.orange, icon: Icons.hourglass_empty),
+                Text(dpFormatDate(item["result_date"]),
+                    style: TextStyle(fontSize: 12, color: dpMuted(context))),
+              ],
+            ),
+          ),
+          trailing: IconButton(
+            icon: const Icon(Icons.delete_outline, color: AppColors.errorRed),
+            tooltip: "Delete case",
+            onPressed: () => _deleteCase(item),
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DpScanImage(imageId: item["image_id"], height: 210, radius: 16),
+            const SizedBox(height: 12),
+            DpInfoRow(icon: Icons.coronavirus_outlined, label: "AI prediction", value: disease),
+            DpInfoRow(
+              icon: Icons.speed,
+              label: "Confidence",
+              value: "${(confidence * 100).toStringAsFixed(1)}% (${dpConfidenceLabel(confidence)})",
+            ),
+            DpInfoRow(
+              icon: Icons.event_outlined,
+              label: "Scanned",
+              value: dpFormatDate(item["result_date"], withTime: true),
+            ),
+            const SizedBox(height: 12),
+
+            // ---- Vet review
+            if (hasReview)
+              DpNotice(
+                tone: vetReview["decision"] != item["predicted_disease"]
+                    ? DpTone.warning
+                    : DpTone.success,
+                title: vetReview["decision"] != item["predicted_disease"]
+                    ? "Vet corrected the diagnosis to: ${vetReview["decision"]}"
+                    : "Vet confirmed the AI's diagnosis",
+                text: (vetReview["comments"] ?? "").toString().isNotEmpty
+                    ? "Treatment notes: ${vetReview["comments"]}"
+                    : "",
+              )
+            else if (item["review_requested"] == true)
+              const DpNotice(
+                tone: DpTone.info,
+                icon: Icons.hourglass_empty,
+                text: "Waiting for a vet to review this case.",
+              ),
+            const SizedBox(height: 16),
+
+            // ---- Feedback
+            const DpSectionLabel("Your feedback"),
+            if (_submittedFeedback.contains(resultId))
+              const DpNotice(tone: DpTone.success, text: "Feedback submitted. Thank you!")
+            else ...[
+              TextField(
+                controller: _controllerFor(resultId),
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: "How was your experience? Any comments on this diagnosis?",
+                ),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _submittingFeedback.contains(resultId)
+                    ? null
+                    : () => _submitFeedback(resultId),
+                child: _submittingFeedback.contains(resultId)
+                    ? dpButtonSpinner
+                    : const Text("Submit Feedback"),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

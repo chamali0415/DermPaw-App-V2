@@ -10,6 +10,7 @@ import '../app_review/app_review_screen.dart';
 import '../app_review/app_reviews_list_screen.dart';
 import '../admin/admin_screen.dart';
 import '../../core/widgets/theme_toggle_button.dart';
+import '../../core/widgets/dp_ui.dart';
 
 /// Dog-owner dashboard ("Pet Health Monitor").
 /// Every card and button opens a real screen:
@@ -56,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (profileResult["statusCode"] == 200) {
         final profile = profileResult["body"];
         _isAdmin = profile["is_admin"] ?? false;
-        ApiService.currentUserName = profile["name"] ?? ApiService.currentUserName;
+        ApiService.rememberUser(profile);
       }
 
       final reviewsResult = await ApiService.getAllAppReviews();
@@ -243,28 +244,42 @@ class _HomeScreenState extends State<HomeScreen> {
   // ------------------------------------------------------------- sections
 
   Widget _buildGreeting() {
-    final name = (ApiService.currentUserName ?? "").trim();
-    return Column(
+    // Greet with the FIRST name only ("Chamali Tharushika" -> "Chamali")
+    final fullName = (ApiService.currentUserName ?? "").trim();
+    final firstName = fullName.isEmpty ? "" : fullName.split(RegExp(r'\s+')).first;
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "PET HEALTH MONITOR",
-          style: TextStyle(
-            color: AppColors.primaryBlue,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "PET HEALTH MONITOR",
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                firstName.isEmpty ? "Welcome!" : "Welcome, $firstName!",
+                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Here is today's overview for your dog's dermatology.",
+                style: TextStyle(color: AppColors.textGrey, fontSize: 14),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          name.isEmpty ? "Welcome!" : "Welcome, $name!",
-          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          "Here is today's overview for your dog's dermatology.",
-          style: TextStyle(color: AppColors.textGrey, fontSize: 14),
+        const SizedBox(width: 12),
+        DpProfileAvatar(
+          size: 56,
+          onTap: () => _open(const ProfileScreen()),
         ),
       ],
     );

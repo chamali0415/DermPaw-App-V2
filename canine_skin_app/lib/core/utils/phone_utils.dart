@@ -2,38 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Sri Lankan phone number helpers.
-/// The user types the local number (0771234567 = 10 digits, or 771234567);
-/// the "+94" prefix is shown in the field and added automatically.
+/// The field shows a fixed "+94" and the user types the 9 digits after it
+/// (e.g. 771234567). A leading 0 is not allowed, because +94 replaces it.
 class PhoneUtils {
-  static const String errorText = "Enter a valid 10-digit number, e.g. 0771234567";
+  static const String errorText = "Enter 9 digits after +94, e.g. 771234567";
 
   /// Returns "+94XXXXXXXXX" or null if invalid. Empty input returns "".
   static String? normalize(String input) {
     final digits = input.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.isEmpty) return "";
-    String local;
-    if (digits.length == 10 && digits.startsWith('0')) {
-      local = digits.substring(1);
-    } else if (digits.length == 9 && !digits.startsWith('0')) {
-      local = digits;
-    } else if (digits.length == 11 && digits.startsWith('94')) {
-      local = digits.substring(2);
-    } else {
-      return null;
-    }
-    if (local.startsWith('0')) return null;
-    return "+94$local";
+    if (digits.length != 9 || digits.startsWith('0')) return null;
+    return "+94$digits";
   }
 
-  /// Converts a stored "+94771234567" back to "0771234567" for editing.
+  /// Converts a stored "+94771234567" (or an old "0771234567") to the
+  /// 9 digits shown in the field: "771234567".
   static String toLocal(String? stored) {
     if (stored == null || stored.isEmpty) return "";
-    final digits = stored.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.length == 11 && digits.startsWith('94')) return "0${digits.substring(2)}";
+    var digits = stored.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length == 11 && digits.startsWith('94')) digits = digits.substring(2);
+    if (digits.length == 10 && digits.startsWith('0')) digits = digits.substring(1);
     return digits;
   }
 
-  /// Text field with a fixed +94 prefix that only accepts 10 digits.
+  /// Text field with a fixed +94 prefix that accepts exactly 9 digits
+  /// and refuses a leading 0.
   static TextField field({
     required TextEditingController controller,
     String? errorText,
@@ -45,16 +38,32 @@ class PhoneUtils {
       keyboardType: TextInputType.phone,
       inputFormatters: [
         FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(10),
+        _NoLeadingZeroFormatter(),
+        LengthLimitingTextInputFormatter(9),
       ],
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: labelText,
-        hintText: "0771234567",
+        hintText: "771234567",
         prefixText: "+94  ",
+        prefixIcon: const Icon(Icons.phone_outlined),
+        helperText: "9 digits, without the first 0",
         counterText: "",
         errorText: errorText,
       ),
+    );
+  }
+}
+
+/// Removes zeros typed at the start (the 0 of 077... is replaced by +94).
+class _NoLeadingZeroFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text.replaceFirst(RegExp(r'^0+'), '');
+    if (text == newValue.text) return newValue;
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
     );
   }
 }

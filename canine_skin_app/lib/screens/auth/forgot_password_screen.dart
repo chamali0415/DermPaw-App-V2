@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/widgets/dp_ui.dart';
 import 'reset_password_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -56,31 +57,42 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Forgot Password")),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              "Enter your registered email address. We'll send you a code to reset your password.",
+            const Center(child: DpIconTile(Icons.lock_reset, size: 72)),
+            const SizedBox(height: 18),
+            const DpPageHeader(
+              eyebrow: "Account recovery",
+              title: "Reset your password",
+              subtitle: "Enter your registered email. We'll send you a code to reset your password.",
+              align: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: "Email"),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 24),
-            if (_message != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(_message!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 22),
+            DpCard(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const DpFieldLabel("Email"),
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      hintText: "your.email@example.com",
+                      prefixIcon: Icon(Icons.mail_outline),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  DpErrorText(_message),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _handleRequestCode,
+                    child: _isLoading ? dpButtonSpinner : const Text("Send Reset Code"),
+                  ),
+                ],
               ),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _handleRequestCode,
-              child: _isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text("Send Reset Code"),
             ),
           ],
         ),

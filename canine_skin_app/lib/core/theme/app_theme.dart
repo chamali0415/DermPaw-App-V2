@@ -11,7 +11,14 @@ class AppColors {
   static const Color errorRed = Color(0xFFDC3545);
   static const Color errorBg = Color(0xFFFDE8E8);
 
-  static const Color lightBackground = Color(0xFFEEF3FC);
+  // Dashboard look: near-white page, white cards with a hairline border
+  static const Color lightBackground = Color(0xFFF5F7FC);
+  static const Color cardBorder = Color(0xFFE6EBF3);
+  static const Color darkCardBorder = Color(0xFF283041);
+  static const Color gradientStart = Color(0xFF2563EB);
+  static const Color gradientEnd = Color(0xFF6D5BD0);
+  static const Color purple = Color(0xFF6D5BD0);
+  static const Color orange = Color(0xFFF59E0B);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color textDark = Color(0xFF1E2532);
   static const Color textGrey = Color(0xFF6B7280);
@@ -39,20 +46,45 @@ class AppTheme {
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.lightBackground,
         foregroundColor: AppColors.textDark,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
           fontSize: 20,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w800,
           color: AppColors.textDark,
         ),
       ),
       cardTheme: CardThemeData(
         color: AppColors.lightSurface,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.cardBorder),
+        ),
         margin: EdgeInsets.zero,
       ),
+      dividerTheme: const DividerThemeData(color: AppColors.cardBorder, thickness: 1, space: 1),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.lightSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titleTextStyle: const TextStyle(
+            fontSize: 19, fontWeight: FontWeight.w800, color: AppColors.textDark),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.textDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        shape: Border(),
+        collapsedShape: Border(),
+        tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(color: AppColors.primaryBlue),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryBlue,
@@ -82,16 +114,16 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFF5F7FB),
+        fillColor: AppColors.lightSurface,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         hintStyle: const TextStyle(color: AppColors.textGrey),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.cardBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.cardBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -139,15 +171,38 @@ class AppTheme {
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.darkBackground,
         foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
       ),
       cardTheme: CardThemeData(
         color: AppColors.darkSurface,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.darkCardBorder),
+        ),
         margin: EdgeInsets.zero,
+      ),
+      dividerTheme: const DividerThemeData(color: AppColors.darkCardBorder, thickness: 1, space: 1),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.darkSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titleTextStyle: const TextStyle(
+            fontSize: 19, fontWeight: FontWeight.w800, color: Colors.white),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        shape: Border(),
+        collapsedShape: Border(),
+        tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -176,7 +231,11 @@ class AppTheme {
         hintStyle: const TextStyle(color: AppColors.darkTextGrey),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.darkCardBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.darkCardBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),

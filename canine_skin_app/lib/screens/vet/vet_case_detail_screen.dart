@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dp_ui.dart';
 import '../auth/login_screen.dart';
 
 class VetCaseDetailScreen extends StatefulWidget {
@@ -122,7 +124,11 @@ class _VetCaseDetailScreenState extends State<VetCaseDetailScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
+              ? DpEmptyState(
+                  icon: Icons.cloud_off_outlined,
+                  title: _errorMessage!,
+                  color: AppColors.errorRed,
+                )
               : _buildDetails(),
     );
   }
@@ -132,153 +138,163 @@ class _VetCaseDetailScreenState extends State<VetCaseDetailScreen> {
     final image = _details?["image"];
     final feedback = _details?["feedback"] as List<dynamic>? ?? [];
     final previousReview = _details?["review"];
-    final predictedDisease = result["predicted_disease"] ?? "Unknown";
+    final String predictedDisease = result["predicted_disease"] ?? "Unknown";
+    final double confidence = ((result["confidence_score"] ?? 0) as num).toDouble();
     final isOverride = _selectedDecision != null && _selectedDecision != predictedDisease;
+    final color = dpConfidenceColor(confidence);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ---- IMAGE DISPLAY ----
-          if (image != null && image["image_id"] != null) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                "${ApiService.baseUrl}/images/${image["image_id"]}/file",
-                headers: {
-                  if (ApiService.authToken != null)
-                    "Authorization": "Bearer ${ApiService.authToken}",
-                },
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: 280,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return Container(
-                    height: 280,
-                    alignment: Alignment.center,
-                    child: const CircularProgressIndicator(),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 280,
-                  alignment: Alignment.center,
-                  color: Colors.grey[300],
-                  child: const Text("Image could not be loaded"),
-                ),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      children: [
+        // ---- Photo
+        if (image != null && image["image_id"] != null) ...[
+          DpScanImage(imageId: image["image_id"], height: 280, radius: 24),
+          const SizedBox(height: 16),
+        ],
+
+        // ---- AI prediction
+        DpCard(
+          accent: color,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Text("AI PREDICTION",
+                      style: TextStyle(
+                        color: dpMuted(context),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                      )),
+                  const Spacer(),
+                  DpChip(dpConfidenceLabel(confidence), color: color),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // ---- AI PREDICTION ----
-          Text(
-            "AI Prediction: $predictedDisease",
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "Confidence: ${((result["confidence_score"] ?? 0) * 100).toStringAsFixed(1)}%",
-          ),
-          const SizedBox(height: 4),
-          Text("Status: ${result["validation_status"] ?? "Pending"}"),
-          const SizedBox(height: 4),
-          Text("Date: ${(result["result_date"] ?? "Unknown").toString().split("T").first}"),
-          const SizedBox(height: 16),
-
-          if (image != null) ...[
-            const Text("Image Details", style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text("Format: ${image["image_format"]}, Resolution: ${image["resolution"]}"),
-            const SizedBox(height: 16),
-          ],
-
-          // ---- OWNER FEEDBACK ----
-          const Text("Owner Feedback", style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          feedback.isEmpty
-              ? const Text("No feedback submitted")
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: feedback
-                      .map((f) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Text("• ${f["feedback_text"]}"),
-                          ))
-                      .toList(),
+              const SizedBox(height: 10),
+              Text(predictedDisease,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 14),
+              DpProgressRow(
+                label: "Model AI confidence",
+                percent: confidence * 100,
+                highlight: true,
+                color: color,
+              ),
+              const Divider(),
+              const SizedBox(height: 6),
+              DpInfoRow(
+                icon: Icons.flag_outlined,
+                label: "Status",
+                value: (result["validation_status"] ?? "Pending").toString(),
+              ),
+              DpInfoRow(
+                icon: Icons.event_outlined,
+                label: "Scanned",
+                value: dpFormatDate(result["result_date"], withTime: true),
+              ),
+              if (image != null)
+                DpInfoRow(
+                  icon: Icons.image_outlined,
+                  label: "Image",
+                  value: "${image["image_format"] ?? ""}  •  ${image["resolution"] ?? ""}",
                 ),
-          const SizedBox(height: 16),
-
-          if (previousReview != null) ...[
-            const Text("Previous Review", style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text("Decision: ${previousReview["decision"]}"),
-            if ((previousReview["comments"] ?? "").toString().isNotEmpty)
-              Text("Comments: ${previousReview["comments"]}"),
-            const SizedBox(height: 16),
-          ],
-
-          const Divider(),
-          const SizedBox(height: 8),
-
-          // ---- STRUCTURED REVIEW FORM ----
-          const Text(
-            "Your Review",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ],
           ),
-          const SizedBox(height: 12),
+        ),
+        const SizedBox(height: 20),
 
-          const Text("Final Diagnosis"),
-          const SizedBox(height: 4),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedDecision,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
-            items: _diseaseOptions
-                .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                .toList(),
-            onChanged: (value) => setState(() => _selectedDecision = value),
-          ),
-          const SizedBox(height: 8),
-          if (isOverride)
-            const Text(
-              "This overrides the AI's prediction",
-              style: TextStyle(color: Colors.orange, fontStyle: FontStyle.italic),
-            )
-          else
-            const Text(
-              "This confirms the AI's prediction",
-              style: TextStyle(color: Colors.green, fontStyle: FontStyle.italic),
-            ),
-          const SizedBox(height: 16),
+        // ---- Owner feedback
+        DpSectionLabel("Owner feedback (${feedback.length})"),
+        if (feedback.isEmpty)
+          const DpNotice(
+            tone: DpTone.info,
+            icon: Icons.chat_bubble_outline,
+            text: "No feedback submitted by the owner.",
+          )
+        else
+          ...feedback.map((f) => DpCard(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.format_quote_rounded, color: AppColors.primaryBlue),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text("${f["feedback_text"]}", style: const TextStyle(height: 1.4))),
+                  ],
+                ),
+              )),
+        const SizedBox(height: 20),
 
-          const Text("Treatment Notes"),
-          const SizedBox(height: 4),
-          TextField(
-            controller: _commentsController,
-            maxLines: 4,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              hintText: "e.g. Recommend antifungal shampoo twice weekly for 3 weeks.",
-            ),
+        if (previousReview != null) ...[
+          const DpSectionLabel("Previous review"),
+          DpNotice(
+            tone: DpTone.success,
+            title: "Decision: ${previousReview["decision"]}",
+            text: (previousReview["comments"] ?? "").toString().isNotEmpty
+                ? "Comments: ${previousReview["comments"]}"
+                : "",
           ),
           const SizedBox(height: 20),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _isSubmitting ? null : _submitReview,
-              child: _isSubmitting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text("Submit Review"),
-            ),
-          ),
         ],
-      ),
+
+        // ---- Review form
+        const DpSectionLabel("Your review"),
+        DpCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text("Final diagnosis",
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _diseaseOptions.map((d) {
+                  final selected = d == _selectedDecision;
+                  return ChoiceChip(
+                    label: Text(d),
+                    selected: selected,
+                    showCheckmark: true,
+                    selectedColor: AppColors.primaryBlue.withOpacity(0.15),
+                    labelStyle: TextStyle(
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                      color: selected ? AppColors.primaryBlue : null,
+                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    onSelected: (_) => setState(() => _selectedDecision = d),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              DpNotice(
+                tone: isOverride ? DpTone.warning : DpTone.success,
+                text: isOverride
+                    ? "This overrides the AI's prediction ($predictedDisease)."
+                    : "This confirms the AI's prediction.",
+              ),
+              const SizedBox(height: 16),
+              const Text("Treatment notes",
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _commentsController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  hintText: "e.g. Recommend antifungal shampoo twice weekly for 3 weeks.",
+                ),
+              ),
+              const SizedBox(height: 18),
+              ElevatedButton.icon(
+                onPressed: _isSubmitting ? null : _submitReview,
+                icon: _isSubmitting ? dpButtonSpinner : const Icon(Icons.send_rounded),
+                label: const Text("Submit Review"),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

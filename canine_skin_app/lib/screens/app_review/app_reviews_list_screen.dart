@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dp_ui.dart';
 import '../auth/login_screen.dart';
 
 class AppReviewsListScreen extends StatefulWidget {
@@ -65,12 +67,22 @@ class _AppReviewsListScreenState extends State<AppReviewsListScreen> {
       children: List.generate(5, (i) {
         final filled = i < rating.round();
         return Icon(
-          filled ? Icons.star : Icons.star_border,
+          filled ? Icons.star_rounded : Icons.star_outline_rounded,
           color: Colors.amber,
           size: size,
         );
       }),
     );
+  }
+
+  /// How many reviews gave 5, 4, 3, 2, 1 stars
+  Map<int, int> get _distribution {
+    final counts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+    for (final r in _reviews) {
+      final v = ((r["rating"] ?? 0) as num).round();
+      if (counts.containsKey(v)) counts[v] = counts[v]! + 1;
+    }
+    return counts;
   }
 
   @override
@@ -82,71 +94,122 @@ class _AppReviewsListScreenState extends State<AppReviewsListScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
-                ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
+                ? DpEmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: _errorMessage!,
+                    message: "Pull down to try again.",
+                    color: AppColors.errorRed,
+                  )
                 : ListView(
-                    padding: const EdgeInsets.all(16),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                     children: [
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            children: [
-                              Text(
-                                _averageRating.toStringAsFixed(1),
-                                style: const TextStyle(
-                                    fontSize: 40, fontWeight: FontWeight.bold),
+                      const DpPageHeader(
+                        eyebrow: "Community & support",
+                        title: "What users say",
+                        subtitle: "User stories and veterinary testimonials.",
+                      ),
+                      const SizedBox(height: 18),
+                      DpCard(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            Column(
+                              children: [
+                                Text(
+                                  _averageRating.toStringAsFixed(1),
+                                  style: const TextStyle(fontSize: 44, fontWeight: FontWeight.w800),
+                                ),
+                                _buildStarRow(_averageRating, size: 20),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "$_totalReviews review${_totalReviews == 1 ? '' : 's'}",
+                                  style: TextStyle(color: dpMuted(context), fontSize: 12.5),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                children: _distribution.entries.map((e) {
+                                  final share = _reviews.isEmpty ? 0.0 : e.value / _reviews.length;
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 3),
+                                    child: Row(
+                                      children: [
+                                        SizedBox(
+                                          width: 14,
+                                          child: Text("${e.key}",
+                                              style: const TextStyle(
+                                                  fontSize: 12, fontWeight: FontWeight.w700)),
+                                        ),
+                                        const Icon(Icons.star_rounded, size: 13, color: Colors.amber),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(6),
+                                            child: LinearProgressIndicator(
+                                              value: share,
+                                              minHeight: 7,
+                                              backgroundColor: dpMuted(context).withOpacity(0.15),
+                                              valueColor:
+                                                  const AlwaysStoppedAnimation(Colors.amber),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
                               ),
-                              const SizedBox(height: 4),
-                              _buildStarRow(_averageRating, size: 24),
-                              const SizedBox(height: 4),
-                              Text(
-                                "$_totalReviews review${_totalReviews == 1 ? '' : 's'}",
-                                style: const TextStyle(color: Colors.grey),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 22),
+                      DpSectionLabel("Reviews ($_totalReviews)"),
                       if (_reviews.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 32),
-                          child: Center(child: Text("No reviews yet")),
+                        const DpNotice(
+                          tone: DpTone.info,
+                          icon: Icons.chat_bubble_outline,
+                          text: "No reviews yet. Be the first to rate DermPaw!",
                         )
                       else
                         ..._reviews.map((review) {
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        review["reviewer_name"] ?? "Anonymous",
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                          final comment = (review["comment"] ?? "").toString();
+                          return DpCard(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    DpInitialAvatar(name: review["reviewer_name"], size: 40),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            review["reviewer_name"] ?? "Anonymous",
+                                            style: const TextStyle(fontWeight: FontWeight.w800),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          _buildStarRow(review["rating"] ?? 0, size: 16),
+                                        ],
                                       ),
-                                      Text(
-                                        (review["updated_at"] ?? "")
-                                            .toString()
-                                            .split("T")
-                                            .first,
-                                        style: const TextStyle(
-                                            fontSize: 12, color: Colors.grey),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  _buildStarRow(review["rating"] ?? 0),
-                                  if ((review["comment"] ?? "").toString().isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    Text(review["comment"]),
+                                    ),
+                                    Text(
+                                      dpFormatDate(review["updated_at"]),
+                                      style: TextStyle(fontSize: 12, color: dpMuted(context)),
+                                    ),
                                   ],
+                                ),
+                                if (comment.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  Text(comment, style: const TextStyle(height: 1.4)),
                                 ],
-                              ),
+                              ],
                             ),
                           );
                         }),

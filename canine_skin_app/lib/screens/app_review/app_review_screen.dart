@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dp_ui.dart';
 import '../auth/login_screen.dart';
 
 class AppReviewScreen extends StatefulWidget {
@@ -108,14 +110,21 @@ class _AppReviewScreenState extends State<AppReviewScreen> {
   Widget _buildStar(int index) {
     final filled = index <= _rating;
     return IconButton(
-      iconSize: 40,
-      icon: Icon(
-        filled ? Icons.star : Icons.star_border,
-        color: filled ? Colors.amber : Colors.grey,
+      iconSize: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      icon: AnimatedScale(
+        scale: filled ? 1.08 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        child: Icon(
+          filled ? Icons.star_rounded : Icons.star_outline_rounded,
+          color: filled ? Colors.amber : dpMuted(context),
+        ),
       ),
       onPressed: () => setState(() => _rating = index),
     );
   }
+
+  static const List<String> _ratingWords = ["", "Poor", "Fair", "Good", "Very good", "Excellent"];
 
   @override
   Widget build(BuildContext context) {
@@ -124,54 +133,64 @@ class _AppReviewScreenState extends State<AppReviewScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
+              ? DpEmptyState(
+                  icon: Icons.cloud_off_outlined,
+                  title: _errorMessage!,
+                  color: AppColors.errorRed,
+                )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const SizedBox(height: 8),
-                      const Text(
-                        "How would you rate DermPaw?",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      const DpPageHeader(
+                        eyebrow: "Community & support",
+                        title: "How would you rate DermPaw?",
+                        subtitle: "Your rating helps us improve canine diagnostic models.",
                       ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(5, (i) => _buildStar(i + 1)),
-                      ),
-                      if (_lastUpdated != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          "You last updated your review on $_lastUpdated",
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      const SizedBox(height: 18),
+                      DpCard(
+                        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 12),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(5, (i) => _buildStar(i + 1)),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _rating == 0 ? "Tap a star to rate" : _ratingWords[_rating],
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                color: _rating == 0 ? dpMuted(context) : Colors.amber[800],
+                              ),
+                            ),
+                            if (_lastUpdated != null) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                "You last updated your review on $_lastUpdated",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: dpMuted(context), fontSize: 12),
+                              ),
+                            ],
+                          ],
                         ),
-                      ],
-                      const SizedBox(height: 24),
-                      const Text(
-                        "Comments (optional)",
-                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 20),
+                      const DpSectionLabel("Comments (optional)"),
                       TextField(
                         controller: _commentController,
-                        maxLines: 4,
+                        maxLines: 5,
                         decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
                           hintText: "Tell us what you liked or what could be better...",
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 22),
                       ElevatedButton(
                         onPressed: _isSubmitting ? null : _submitReview,
                         child: _isSubmitting
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
+                            ? dpButtonSpinner
                             : Text(_lastUpdated != null ? "Update Review" : "Submit Review"),
                       ),
                     ],

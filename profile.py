@@ -1,4 +1,8 @@
-from flask import Blueprint, request, jsonify
+import os
+import uuid
+from datetime import datetime
+from flask import Blueprint, request, jsonify, send_file
+from PIL import Image as PILImage, ImageOps, UnidentifiedImageError
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Dog, Image, ClassificationResult, Feedback, VetReview
 from flask_bcrypt import check_password_hash
@@ -80,7 +84,82 @@ def delete_profile():
     VetReview.query.filter_by(vet_id=user_id).delete(synchronize_session=False)
     Feedback.query.filter_by(user_id=user_id).delete(synchronize_session=False)
 
+    _remove_picture_file(user)
     db.session.delete(user)
     db.session.commit()
 
     return jsonify({"message": "Account deleted successfully"}), 200
+
+
+# ------------------------------------------------------------ profile picture
+PROFILE_FOLDER = os.path.join("uploads", "profiles")
+MAX_PICTURE_SIZE = 10 * 1024 * 1024  # 10 MB
+PICTURE_SIDE = 512                   # stored as a 512x512 square JPEG
+
+
+def _remove_picture_file(user):
+    if user.profile_image_path and os.path.exists(user.profile_image_path):
+        try:
+            os.remove(user.profile_image_path)
+        except OSError as e:
+            print(f"[profile] could not remove {user.profile_image_path}: {e}")
+
+
+@profile_bp.route("/profile/picture", methods=["POST"])
+@jwt_required()
+def upload_profile_picture():
+    user = User.query.get(get_jwt_identity())
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+    file.seek(0, os.SEEK_END)
+    size = file.tell()
+    file.seek(0)
+    if size == 0 or size > MAX_PICTURE_SIZE:
+        return jsonify({"error": "Please choose a photo smaller than 10MB"}), 400
+
+    try:
+        img = PILImage.open(file)
+        img.load()
+    except (UnidentifiedImageError, OSError):
+        return jsonify({"error": "This file is not a supported image"}), 400
+
+    # Square crop from the centre, fixed size, always JPEG
+    img = ImageOps.exif_transpose(img).convert("RGB")
+    img = ImageOps.fit(img, (PICTURE_SIDE, PICTURE_SIDE))
+
+    os.makedirs(PROFILE_FOLDER, exist_ok=True)
+    path = os.path.join(PROFILE_FOLDER, f"user{user.user_id}_{uuid.uuid4().hex}.jpg")
+    img.save(path, "JPEG", quality=90)
+
+    _remove_picture_file(user)  # delete the old picture file
+    user.profile_image_path = path
+    user.profile_image_updated = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"message": "Profile picture updated", "user": user.to_dict()}), 200
+
+
+@profile_bp.route("/profile/picture", methods=["DELETE"])
+@jwt_required()
+def delete_profile_picture():
+    user = User.query.get(get_jwt_identity())
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    _remove_picture_file(user)
+    user.profile_image_path = None
+    user.profile_image_updated = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"message": "Profile picture removed", "user": user.to_dict()}), 200
+
+
+@profile_bp.route("/users/<int:user_id>/picture", methods=["GET"])
+@jwt_required()
+def get_profile_picture(user_id):
+    user = User.query.get(user_id)
+    if not user or not user.profile_image_path or not os.path.exists(user.profile_image_path):
+        return jsonify({"error": "No profile picture"}), 404
+    return send_file(user.profile_image_path, mimetype="image/jpeg")
+

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
+import '../localization/app_strings.dart';
 
 /// Sun / moon pill switch for light and dark mode (as in the dashboard mockups).
 class ThemeToggleButton extends StatelessWidget {
@@ -16,7 +17,7 @@ class ThemeToggleButton extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Tooltip(
-            message: isDark ? "Switch to light mode" : "Switch to dark mode",
+            message: isDark ? context.tr('switch_to_light') : context.tr('switch_to_dark'),
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
               onTap: () => ThemeController.setDark(!isDark),

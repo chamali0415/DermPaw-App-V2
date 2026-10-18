@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/localization/app_strings.dart';
 import '../../core/services/api_service.dart';
 import '../../core/widgets/dp_ui.dart';
 import 'login_screen.dart';
@@ -36,7 +37,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       if (result["statusCode"] == 200) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Password reset successfully! Please log in.")),
+            SnackBar(content: Text(context.tr('reset_success'))),
           );
           Navigator.pushAndRemoveUntil(
             context,
@@ -46,12 +47,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         }
       } else {
         setState(() {
-          _message = result["body"]["error"] ?? "Reset failed";
+          _message = result["body"]["error"] ?? context.tr('reset_failed');
         });
       }
     } catch (e) {
       setState(() {
-        _message = "Could not connect to server. Check your connection.";
+        _message = context.tr('server_error');
       });
     } finally {
       setState(() {
@@ -63,7 +64,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Reset Password")),
+      appBar: AppBar(title: Text(context.tr('reset_password'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         child: Column(
@@ -72,9 +73,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             const Center(child: DpIconTile(Icons.mark_email_read_outlined, size: 72)),
             const SizedBox(height: 18),
             DpPageHeader(
-              eyebrow: "Check your inbox",
-              title: "Enter your code",
-              subtitle: "A reset code was sent to ${widget.email}",
+              eyebrow: context.tr('check_inbox'),
+              title: context.tr('enter_your_code'),
+              subtitle: context.tr('reset_code_sent').replaceAll('{email}', widget.email),
               align: TextAlign.center,
             ),
             const SizedBox(height: 22),
@@ -83,21 +84,21 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const DpFieldLabel("Reset Code"),
+                  DpFieldLabel(context.tr('reset_code')),
                   TextField(
                     controller: _codeController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      hintText: "6-digit code",
-                      prefixIcon: Icon(Icons.pin_outlined),
+                    decoration: InputDecoration(
+                      hintText: context.tr('six_digit_code'),
+                      prefixIcon: const Icon(Icons.pin_outlined),
                     ),
                   ),
-                  const DpFieldLabel("New Password"),
+                  DpFieldLabel(context.tr('new_password')),
                   TextField(
                     controller: _newPasswordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
-                      hintText: "Create a strong password",
+                      hintText: context.tr('strong_password_hint'),
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -112,14 +113,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Must be 8+ characters with uppercase, lowercase, number, and special character",
+                    context.tr('password_rule_short'),
                     style: TextStyle(fontSize: 12, color: dpMuted(context)),
                   ),
                   const SizedBox(height: 18),
                   DpErrorText(_message),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _handleReset,
-                    child: _isLoading ? dpButtonSpinner : const Text("Reset Password"),
+                    child: _isLoading ? dpButtonSpinner : Text(context.tr('reset_password')),
                   ),
                 ],
               ),

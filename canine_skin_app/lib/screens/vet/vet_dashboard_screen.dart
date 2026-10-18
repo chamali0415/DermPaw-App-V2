@@ -16,7 +16,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/dp_ui.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 
-/// Veterinarian dashboard ("Patient Records Overview").
+/// Veterinarian dashboard.
 /// Every card and button opens a real screen:
 ///   Bell / All Records / "View all"          -> VetRecordsScreen (cases waiting)
 ///   Verify Now / case row                    -> VetCaseDetailScreen
@@ -45,10 +45,6 @@ class _VetDashboardScreenState extends State<VetDashboardScreen> {
   bool _statsLoaded = false;
   double _averageRating = 0;
   int _myScans = 0;
-
-  /// 0 = all, 1 = owner requested, 2 = low confidence
-  int _filter = 0;
-  static const _filterNames = ["All Patients", "Owner requested", "Low confidence"];
 
   @override
   void initState() {
@@ -173,19 +169,6 @@ class _VetDashboardScreenState extends State<VetDashboardScreen> {
     }
   }
 
-  List<dynamic> get _filteredPending {
-    switch (_filter) {
-      case 1:
-        return _pending.where((c) => c["review_requested"] == true).toList();
-      case 2:
-        return _pending
-            .where((c) => ((c["confidence_score"] ?? 0) as num).toDouble() < 0.5)
-            .toList();
-      default:
-        return _pending;
-    }
-  }
-
   // ----------------------------------------------------------------- build
 
   @override
@@ -253,8 +236,6 @@ class _VetDashboardScreenState extends State<VetDashboardScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            _buildFilterRow(),
-            const SizedBox(height: 14),
             _buildCasesCompletedCard(),
             const SizedBox(height: 14),
             _buildConfirmedCard(),
@@ -312,7 +293,6 @@ class _VetDashboardScreenState extends State<VetDashboardScreen> {
       children: [
         Expanded(
           child: DpPageHeader(
-            eyebrow: "Patient records overview",
             title: "Welcome, Dr. $name!",
             subtitle: "Here is today's overview of dog skin cases.",
           ),
@@ -321,43 +301,6 @@ class _VetDashboardScreenState extends State<VetDashboardScreen> {
         DpProfileAvatar(
           size: 64,
           onTap: () => _open(const ProfileScreen()),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFilterRow() {
-    return Row(
-      children: [
-        const Text("Select Patients", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-        const Spacer(),
-        PopupMenuButton<int>(
-          initialValue: _filter,
-          onSelected: (v) => setState(() => _filter = v),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          itemBuilder: (context) => List.generate(
-            _filterNames.length,
-            (i) => PopupMenuItem(value: i, child: Text(_filterNames[i])),
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardTheme.color,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: dpIsDark(context) ? AppColors.darkCardBorder : AppColors.cardBorder,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(_filterNames[_filter],
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
-                const SizedBox(width: 6),
-                const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-              ],
-            ),
-          ),
         ),
       ],
     );
@@ -447,7 +390,7 @@ class _VetDashboardScreenState extends State<VetDashboardScreen> {
   }
 
   Widget _buildRecentCasesCard() {
-    final cases = _filteredPending;
+    final cases = _pending;
     final shown = cases.take(3).toList();
 
     Widget body;
@@ -475,7 +418,7 @@ class _VetDashboardScreenState extends State<VetDashboardScreen> {
           if (cases.length > shown.length) ...[
             const SizedBox(height: 8),
             TextButton(
-              onPressed: () => _open(VetRecordsScreen(initialFilter: _filter)),
+              onPressed: () => _open(const VetRecordsScreen()),
               child: Text("View all ${cases.length} cases"),
             ),
           ],

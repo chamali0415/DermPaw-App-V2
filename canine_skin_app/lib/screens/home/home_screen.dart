@@ -10,6 +10,8 @@ import '../app_review/app_review_screen.dart';
 import '../app_review/app_reviews_list_screen.dart';
 import '../admin/admin_screen.dart';
 import '../../core/widgets/theme_toggle_button.dart';
+import '../../core/widgets/language_toggle_button.dart';
+import '../../core/localization/app_strings.dart';
 import '../../core/widgets/dp_ui.dart';
 
 /// Dog-owner dashboard ("Pet Health Monitor").
@@ -93,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final now = DateTime.now();
     final hour = d.hour % 12 == 0 ? 12 : d.hour % 12;
     final time = "$hour:${d.minute.toString().padLeft(2, '0')} ${d.hour < 12 ? 'AM' : 'PM'}";
-    if (d.year == now.year && d.month == now.month && d.day == now.day) return "Today, $time";
+    if (d.year == now.year && d.month == now.month && d.day == now.day) return context.tr('today_time').replaceAll('{time}', time);
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     return "${d.day} ${months[d.month - 1]}, $time";
   }
@@ -107,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
       (route) => false,
     );
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Your session has expired. Please log in again.")),
+      SnackBar(content: Text(context.tr('session_expired'))),
     );
   }
 
@@ -134,25 +136,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.medical_services_outlined,
-                  color: AppColors.primaryBlue, size: 22),
-            ),
-            const SizedBox(width: 12),
-            const Text("Dashboard"),
-          ],
-        ),
+        title: Text(context.tr('dashboard')),
         actions: [
           const ThemeToggleButton(),
+          const LanguageToggleButton(),
           IconButton(
-            tooltip: "Vet review updates",
+            tooltip: context.tr('vet_review_updates'),
             onPressed: () => _open(const OwnerVetReviewsScreen()),
             icon: Stack(
               clipBehavior: Clip.none,
@@ -176,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
-            tooltip: "Logout",
+            tooltip: context.tr('logout'),
             onPressed: _handleLogout,
           ),
         ],
@@ -187,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: AppColors.primaryBlue,
         foregroundColor: Colors.white,
         shape: const CircleBorder(),
-        tooltip: "New Scan",
+        tooltip: context.tr('new_scan'),
         onPressed: () => _open(const UploadScreen()),
         child: const Icon(Icons.add, size: 30),
       ),
@@ -214,10 +203,10 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
             _buildUploadCard(),
             const SizedBox(height: 24),
-            _sectionHeader("QUICK SERVICES",
+            _sectionHeader(context.tr('quick_services'),
                 trailing: TextButton(
                   onPressed: () => _open(const ProfileScreen()),
-                  child: const Text("Manage"),
+                  child: Text(context.tr('manage')),
                 )),
             const SizedBox(height: 8),
             _buildQuickServices(),
@@ -226,13 +215,13 @@ class _HomeScreenState extends State<HomeScreen> {
               _listTileCard(
                 icon: Icons.verified_user_outlined,
                 iconColor: Colors.deepPurple,
-                title: "Verify Vets (Admin)",
-                subtitle: "Approve veterinarian registrations",
+                title: context.tr('verify_vets_admin'),
+                subtitle: context.tr('approve_vet_regs'),
                 onTap: () => _open(const AdminScreen()),
               ),
             ],
             const SizedBox(height: 24),
-            _sectionHeader("COMMUNITY & SUPPORT"),
+            _sectionHeader(context.tr('community_support')),
             const SizedBox(height: 8),
             _buildCommunityCard(),
           ],
@@ -254,9 +243,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "PET HEALTH MONITOR",
-                style: TextStyle(
+              Text(
+                context.tr('pet_health_monitor'),
+                style: const TextStyle(
                   color: AppColors.primaryBlue,
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -265,12 +254,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                firstName.isEmpty ? "Welcome!" : "Welcome, $firstName!",
+                firstName.isEmpty
+                    ? context.tr('welcome')
+                    : context.tr('welcome_name').replaceAll('{name}', firstName),
                 style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 4),
               Text(
-                "Here is today's overview for your dog's dermatology.",
+                context.tr('today_overview'),
                 style: TextStyle(color: AppColors.textGrey, fontSize: 14),
               ),
             ],
@@ -324,11 +315,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
                     const SizedBox(width: 10),
                     if (monthCount > 0)
-                      _chip("+$monthCount this month", AppColors.confidenceGreen),
+                      _chip(context.tr('this_month').replaceAll('{n}', '$monthCount'),
+                          AppColors.confidenceGreen),
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text("Total AI Diagnoses Completed",
+                Text(context.tr('total_ai_diagnoses'),
                     style: TextStyle(color: AppColors.textGrey, fontSize: 14)),
               ],
             ),
@@ -346,10 +338,10 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _iconTile(Icons.pets, AppColors.primaryBlue, size: 48),
             const SizedBox(width: 14),
-            const Expanded(
+            Expanded(
               child: Text(
-                "No diagnoses yet. Upload a photo of your dog's skin to get your first AI result.",
-                style: TextStyle(fontSize: 14),
+                context.tr('no_diagnoses_yet'),
+                style: const TextStyle(fontSize: 14),
               ),
             ),
           ],
@@ -369,27 +361,28 @@ class _HomeScreenState extends State<HomeScreen> {
     final String level;
     final Color levelColor;
     if (confidence >= 0.8) {
-      level = "High";
+      level = context.tr('level_high');
       levelColor = AppColors.confidenceGreen;
     } else if (confidence >= 0.5) {
-      level = "Moderate";
+      level = context.tr('level_moderate');
       levelColor = AppColors.amberText;
     } else {
-      level = "Low";
+      level = context.tr('level_low');
       levelColor = AppColors.errorRed;
     }
 
     final String footer;
     if (review != null) {
       footer = review["decision"] == disease
-          ? "Confirmed by a veterinarian"
-          : "Vet updated this to: ${review["decision"]}";
+          ? context.tr('confirmed_by_vet')
+          : context.tr('vet_updated_to')
+              .replaceAll('{name}', context.trDisease(review["decision"]));
     } else if (item["review_requested"] == true) {
-      footer = "Vet review requested - awaiting response";
+      footer = context.tr('review_requested_waiting');
     } else if (confidence < 0.5) {
-      footer = "Vet review recommended";
+      footer = context.tr('vet_review_recommended');
     } else {
-      footer = "AI result - consult a vet if symptoms persist";
+      footer = context.tr('ai_result_consult');
     }
 
     return Container(
@@ -405,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
-                Text("MOST RECENT DIAGNOSIS",
+                Text(context.tr('most_recent_diagnosis'),
                     style: TextStyle(
                       color: AppColors.textGrey,
                       fontSize: 12,
@@ -446,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(title,
+                            child: Text(context.trDisease(title),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -471,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                const Text("Model AI Confidence", style: TextStyle(fontSize: 14)),
+                Text(context.tr('model_ai_confidence'), style: const TextStyle(fontSize: 14)),
                 const Spacer(),
                 Text("${(confidence * 100).toStringAsFixed(1)}%",
                     style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -498,8 +491,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontStyle: FontStyle.italic,
                       )),
                 ),
-                const Text("Full Details",
-                    style: TextStyle(
+                Text(context.tr('full_details'),
+                    style: const TextStyle(
                         color: AppColors.primaryBlue, fontWeight: FontWeight.w700)),
                 const Icon(Icons.chevron_right, color: AppColors.primaryBlue, size: 20),
               ],
@@ -542,16 +535,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Icon(Icons.photo_camera_outlined, color: Colors.white, size: 28),
               ),
               const SizedBox(width: 16),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Upload Dog Image",
-                        style: TextStyle(
+                    Text(context.tr('upload_dog_image'),
+                        style: const TextStyle(
                             color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800)),
-                    SizedBox(height: 2),
-                    Text("Instant AI skin & lesion scan",
-                        style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    const SizedBox(height: 2),
+                    Text(context.tr('instant_ai_scan'),
+                        style: const TextStyle(color: Colors.white70, fontSize: 14)),
                   ],
                 ),
               ),
@@ -578,8 +571,8 @@ class _HomeScreenState extends State<HomeScreen> {
           child: _serviceTile(
             icon: Icons.person_outline,
             color: AppColors.primaryBlue,
-            title: "My Profile",
-            subtitle: "Edit Info",
+            title: context.tr('my_profile'),
+            subtitle: context.tr('edit_info'),
             onTap: () => _open(const ProfileScreen()),
           ),
         ),
@@ -588,8 +581,8 @@ class _HomeScreenState extends State<HomeScreen> {
           child: _serviceTile(
             icon: Icons.history,
             color: AppColors.primaryBlue,
-            title: "History",
-            subtitle: "${_history.length} Records",
+            title: context.tr('history'),
+            subtitle: context.tr('records_count').replaceAll('{n}', '${_history.length}'),
             onTap: () => _open(const HistoryScreen()),
           ),
         ),
@@ -598,8 +591,8 @@ class _HomeScreenState extends State<HomeScreen> {
           child: _serviceTile(
             icon: Icons.verified_outlined,
             color: AppColors.tealAccent,
-            title: "Vet Reviews",
-            subtitle: "$reviewed Ready",
+            title: context.tr('vet_reviews'),
+            subtitle: context.tr('ready_count').replaceAll('{n}', '$reviewed'),
             subtitleColor: AppColors.tealAccent,
             showDot: reviewed > 0,
             onTap: () => _open(const OwnerVetReviewsScreen()),
@@ -616,8 +609,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             leading: _iconTile(Icons.star_rounded, Colors.amber, size: 44),
-            title: const Text("Rate the App", style: TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: const Text("Help improve canine diagnostic models"),
+            title: Text(context.tr('rate_the_app'),
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(context.tr('help_improve')),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -636,8 +630,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             leading: _iconTile(Icons.chat_bubble_outline, AppColors.primaryBlue, size: 44),
-            title: const Text("View App Reviews", style: TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: const Text("User stories & veterinary testimonials"),
+            title: Text(context.tr('view_app_reviews'),
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(context.tr('user_stories')),
             trailing: Icon(Icons.chevron_right, color: AppColors.textGrey),
             onTap: () => _open(const AppReviewsListScreen()),
           ),
@@ -654,28 +649,28 @@ class _HomeScreenState extends State<HomeScreen> {
       height: 68,
       child: Row(
         children: [
-          _navItem(Icons.home_rounded, "Home", selected: true, onTap: () {}),
-          _navItem(Icons.assignment_outlined, "Records",
+          _navItem(Icons.home_rounded, context.tr('nav_home'), selected: true, onTap: () {}),
+          _navItem(Icons.assignment_outlined, context.tr('nav_records'),
               onTap: () => _open(const HistoryScreen())),
           Expanded(
             child: InkWell(
               onTap: () => _open(const UploadScreen()),
-              child: const Column(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text("New Scan",
-                      style: TextStyle(
+                  Text(context.tr('new_scan'),
+                      style: const TextStyle(
                           color: AppColors.primaryBlue,
                           fontSize: 12,
                           fontWeight: FontWeight.w700)),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),
           ),
-          _navItem(Icons.groups_outlined, "Vets",
+          _navItem(Icons.groups_outlined, context.tr('nav_vets'),
               onTap: () => _open(const OwnerVetReviewsScreen())),
-          _navItem(Icons.person_outline, "Profile",
+          _navItem(Icons.person_outline, context.tr('nav_profile'),
               onTap: () => _open(const ProfileScreen())),
         ],
       ),
@@ -687,13 +682,13 @@ class _HomeScreenState extends State<HomeScreen> {
   String _describe(String disease) {
     switch (disease) {
       case "Ringworm":
-        return "Fungal infection with circular lesions";
+        return context.tr('describe_ringworm');
       case "Mange":
-        return "Mite infestation of the skin";
+        return context.tr('describe_mange');
       case "Healthy":
-        return "No skin condition detected";
+        return context.tr('describe_healthy');
       default:
-        return "AI skin analysis result";
+        return context.tr('describe_default');
     }
   }
 

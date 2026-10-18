@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/localization/app_strings.dart';
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_logo.dart';
@@ -47,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
           final isVet = result["body"]["user"]["is_vet"] == true;
           ApiService.currentUserName = result["body"]["user"]["name"];
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Login successful!")),
+            SnackBar(content: Text(context.tr('login_successful'))),
           );
           Navigator.pushReplacement(
             context,
@@ -58,12 +59,12 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         setState(() {
-          _errorMessage = result["body"]["error"] ?? "Login failed";
+          _errorMessage = result["body"]["error"] ?? context.tr('login_failed');
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = "Could not connect to server. Check your connection.";
+        _errorMessage = context.tr('server_error');
       });
     } finally {
       setState(() {
@@ -89,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Text("DermPaw",
                       style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
                   const Spacer(),
-                  DpChip("AI skin scan", color: AppColors.tealAccent, icon: Icons.auto_awesome),
+                  DpChip(context.tr('ai_skin_scan'), color: AppColors.tealAccent, icon: Icons.auto_awesome),
                 ],
               ),
               const SizedBox(height: 20),
@@ -115,10 +116,10 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 22),
 
-              const DpPageHeader(
-                eyebrow: "Pet Health Monitor",
-                title: "Welcome back",
-                subtitle: "Sign in to check on your dog's skin health.",
+              DpPageHeader(
+                eyebrow: context.tr('pet_health_monitor'),
+                title: context.tr('welcome_back'),
+                subtitle: context.tr('sign_in_subtitle'),
               ),
               const SizedBox(height: 18),
 
@@ -128,16 +129,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const DpFieldLabel("Email"),
+                    DpFieldLabel(context.tr('email')),
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        hintText: "your.email@example.com",
-                        prefixIcon: Icon(Icons.mail_outline),
+                      decoration: InputDecoration(
+                        hintText: context.tr('email_hint'),
+                        prefixIcon: const Icon(Icons.mail_outline),
                       ),
                     ),
-                    const DpFieldLabel("Password"),
+                    DpFieldLabel(context.tr('password')),
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
@@ -145,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (!_isLoading) _handleLogin();
                       },
                       decoration: InputDecoration(
-                        hintText: "Enter your password",
+                        hintText: context.tr('password_hint'),
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -165,13 +166,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
                           );
                         },
-                        child: const Text("Forgot Password?"),
+                        child: Text(context.tr('forgot_password_q')),
                       ),
                     ),
                     DpErrorText(_errorMessage),
                     ElevatedButton(
                       onPressed: _isLoading ? null : _handleLogin,
-                      child: _isLoading ? dpButtonSpinner : const Text("Login"),
+                      child: _isLoading ? dpButtonSpinner : Text(context.tr('login')),
                     ),
                   ],
                 ),
@@ -182,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("Don't have an account?", style: TextStyle(color: dpMuted(context))),
+                  Text(context.tr('no_account'), style: TextStyle(color: dpMuted(context))),
                   TextButton(
                     onPressed: () {
                       Navigator.pushReplacement(
@@ -190,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         MaterialPageRoute(builder: (context) => const RegisterScreen()),
                       );
                     },
-                    child: const Text("Sign up"),
+                    child: Text(context.tr('sign_up')),
                   ),
                 ],
               ),

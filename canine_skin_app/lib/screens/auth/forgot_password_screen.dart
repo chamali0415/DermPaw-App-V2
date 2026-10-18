@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/localization/app_strings.dart';
 import '../../core/services/api_service.dart';
 import '../../core/widgets/dp_ui.dart';
 import 'reset_password_screen.dart';
@@ -39,12 +40,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         }
       } else {
         setState(() {
-          _message = result["body"]["error"] ?? "Something went wrong";
+          _message = result["body"]["error"] ?? context.tr('something_wrong');
         });
       }
     } catch (e) {
       setState(() {
-        _message = "Could not connect to server. Check your connection.";
+        _message = context.tr('server_error');
       });
     } finally {
       setState(() {
@@ -56,7 +57,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Forgot Password")),
+      appBar: AppBar(title: Text(context.tr('forgot_password'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         child: Column(
@@ -64,10 +65,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           children: [
             const Center(child: DpIconTile(Icons.lock_reset, size: 72)),
             const SizedBox(height: 18),
-            const DpPageHeader(
-              eyebrow: "Account recovery",
-              title: "Reset your password",
-              subtitle: "Enter your registered email. We'll send you a code to reset your password.",
+            DpPageHeader(
+              eyebrow: context.tr('account_recovery'),
+              title: context.tr('reset_your_password'),
+              subtitle: context.tr('forgot_subtitle'),
               align: TextAlign.center,
             ),
             const SizedBox(height: 22),
@@ -76,20 +77,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const DpFieldLabel("Email"),
+                  DpFieldLabel(context.tr('email')),
                   TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      hintText: "your.email@example.com",
-                      prefixIcon: Icon(Icons.mail_outline),
+                    decoration: InputDecoration(
+                      hintText: context.tr('email_hint'),
+                      prefixIcon: const Icon(Icons.mail_outline),
                     ),
                   ),
                   const SizedBox(height: 18),
                   DpErrorText(_message),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _handleRequestCode,
-                    child: _isLoading ? dpButtonSpinner : const Text("Send Reset Code"),
+                    child: _isLoading ? dpButtonSpinner : Text(context.tr('send_reset_code')),
                   ),
                 ],
               ),

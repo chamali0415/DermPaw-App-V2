@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../core/localization/app_strings.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/services/api_service.dart';
@@ -49,28 +50,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handleRegister() async {
     if (!_consentGiven) {
-      setState(() => _errorMessage = "Please confirm you understand the AI advisory notice");
+      setState(() => _errorMessage = context.tr('err_consent'));
       return;
     }
     if (_isVetRole && _vetLicenceController.text.trim().isEmpty) {
-      setState(() => _errorMessage = "Veterinary registration number is required");
+      setState(() => _errorMessage = context.tr('err_vet_reg_required'));
       return;
     }
     final phone = PhoneUtils.normalize(_phoneController.text);
     if (phone == null || phone.isEmpty) {
       setState(() {
         _phoneError = PhoneUtils.errorText;
-        _errorMessage = "Please enter a valid Sri Lankan phone number";
+        _errorMessage = context.tr('err_phone');
       });
       return;
     }
 
     if (_nameController.text.trim().isEmpty) {
-      setState(() => _errorMessage = "Please enter your full name");
+      setState(() => _errorMessage = context.tr('err_name'));
       return;
     }
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailController.text.trim())) {
-      setState(() => _errorMessage = "Please enter a valid email address");
+      setState(() => _errorMessage = context.tr('err_email'));
       return;
     }
     // Same rule as the server, checked before we send the email code
@@ -82,11 +83,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(pw);
     if (!strong) {
       setState(() => _errorMessage =
-          "Password must be at least 8 characters with an uppercase letter, a lowercase letter, a number and a special character");
+          context.tr('err_password_weak'));
       return;
     }
     if (_confirmPasswordController.text != pw) {
-      setState(() => _errorMessage = "Passwords do not match. Please type the same password twice.");
+      setState(() => _errorMessage = context.tr('err_password_mismatch'));
       return;
     }
 
@@ -101,11 +102,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final sent = await ApiService.sendVerificationCode(email);
       // 429 = a code was sent less than a minute ago; it is still valid
       if (sent["statusCode"] != 200 && sent["statusCode"] != 429) {
-        setState(() => _errorMessage = sent["body"]["error"] ?? "Could not send verification code");
+        setState(() => _errorMessage = sent["body"]["error"] ?? context.tr('err_send_code'));
         return;
       }
     } catch (e) {
-      setState(() => _errorMessage = "Could not connect to server. Check your connection.");
+      setState(() => _errorMessage = context.tr('server_error'));
       return;
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -134,16 +135,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (result["statusCode"] == 201) {
       // Optional profile photo - uploaded now that the account exists
-      String message = "Email verified - registration successful!";
+      String message = context.tr('register_success');
       if (_profileImage != null) {
         setState(() => _isLoading = true);
         try {
           final up = await ApiService.uploadProfilePicture(_profileImage!);
           if (up["statusCode"] != 200) {
-            message = "Account created. The photo could not be uploaded - add it later in your profile.";
+            message = context.tr('photo_upload_failed');
           }
         } catch (e) {
-          message = "Account created. The photo could not be uploaded - add it later in your profile.";
+          message = context.tr('photo_upload_failed');
         }
         if (!mounted) return;
         setState(() => _isLoading = false);
@@ -157,7 +158,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } else {
       // A problem with the form itself (e.g. phone already registered)
-      setState(() => _errorMessage = result["body"]["error"] ?? "Registration failed");
+      setState(() => _errorMessage = result["body"]["error"] ?? context.tr('register_failed'));
     }
   }
 
@@ -188,7 +189,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.camera_alt_outlined),
-                title: const Text("Take a photo"),
+                title: Text(context.tr('take_photo')),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   _pickProfileImage(ImageSource.camera);
@@ -196,7 +197,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library_outlined),
-                title: const Text("Choose from gallery"),
+                title: Text(context.tr('choose_gallery')),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   _pickProfileImage(ImageSource.gallery);
@@ -205,7 +206,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               if (_profileImage != null)
                 ListTile(
                   leading: const Icon(Icons.delete_outline, color: AppColors.errorRed),
-                  title: const Text("Remove photo", style: TextStyle(color: AppColors.errorRed)),
+                  title: Text(context.tr('remove_photo'),
+                      style: const TextStyle(color: AppColors.errorRed)),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     setState(() => _profileImage = null);
@@ -260,13 +262,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_profileImage == null ? "Add a profile photo" : "Profile photo added",
+                Text(_profileImage == null ? context.tr('add_profile_photo') : context.tr('profile_photo_added'),
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 2),
                 Text(
                   _profileImage == null
-                      ? "Optional - you can skip this and add it later in your profile."
-                      : "Tap to change or remove it.",
+                      ? context.tr('photo_optional')
+                      : context.tr('tap_to_change_photo'),
                   style: TextStyle(fontSize: 12.5, color: dpMuted(context)),
                 ),
               ],
@@ -274,7 +276,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           if (_profileImage != null)
             IconButton(
-              tooltip: "Remove photo",
+              tooltip: context.tr('remove_photo'),
               icon: const Icon(Icons.close, color: AppColors.errorRed),
               onPressed: () => setState(() => _profileImage = null),
             ),
@@ -307,33 +309,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         MaterialPageRoute(builder: (context) => const LoginScreen()),
                       );
                     },
-                    child: const Text("Login"),
+                    child: Text(context.tr('login')),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-              const DpPageHeader(
-                eyebrow: "Create account",
-                title: "Join DermPaw",
-                subtitle: "Smart skin care for your best friend.",
+              DpPageHeader(
+                eyebrow: context.tr('create_account_eyebrow'),
+                title: context.tr('join_dermpaw'),
+                subtitle: context.tr('join_subtitle'),
               ),
               const SizedBox(height: 20),
 
               // ---- Optional profile photo
-              const DpSectionLabel("Profile photo"),
+              DpSectionLabel(context.tr('profile_photo')),
               _buildPhotoPicker(),
               const SizedBox(height: 20),
 
               // ---- Role choice
-              const DpSectionLabel("I am a"),
+              DpSectionLabel(context.tr('i_am_a')),
               Row(
                 children: [
                   Expanded(
                     child: _roleCard(
                       selected: !_isVetRole,
                       icon: Icons.pets,
-                      title: "Dog Owner",
-                      subtitle: "Scan & track",
+                      title: context.tr('dog_owner'),
+                      subtitle: context.tr('scan_and_track'),
                       onTap: () => setState(() => _isVetRole = false),
                     ),
                   ),
@@ -342,8 +344,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: _roleCard(
                       selected: _isVetRole,
                       icon: Icons.medical_services_outlined,
-                      title: "Veterinarian",
-                      subtitle: "Review cases",
+                      title: context.tr('veterinarian'),
+                      subtitle: context.tr('review_cases'),
                       onTap: () => setState(() => _isVetRole = true),
                     ),
                   ),
@@ -352,31 +354,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
 
               // ---- Details
-              const DpSectionLabel("Your details"),
+              DpSectionLabel(context.tr('your_details')),
               DpCard(
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const DpFieldLabel("Full Name"),
+                    DpFieldLabel(context.tr('full_name')),
                     TextField(
                       controller: _nameController,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        hintText: "Enter your full name",
-                        prefixIcon: Icon(Icons.person_outline),
+                      decoration: InputDecoration(
+                        hintText: context.tr('full_name_hint'),
+                        prefixIcon: const Icon(Icons.person_outline),
                       ),
                     ),
-                    const DpFieldLabel("Email"),
+                    DpFieldLabel(context.tr('email')),
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        hintText: "your.email@example.com",
-                        prefixIcon: Icon(Icons.mail_outline),
+                      decoration: InputDecoration(
+                        hintText: context.tr('email_hint'),
+                        prefixIcon: const Icon(Icons.mail_outline),
                       ),
                     ),
-                    const DpFieldLabel("Phone Number"),
+                    DpFieldLabel(context.tr('phone_number')),
                     PhoneUtils.field(
                       controller: _phoneController,
                       errorText: _phoneError,
@@ -385,23 +387,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     if (_isVetRole) ...[
-                      const DpFieldLabel("B.V.Sc. Registration No."),
+                      DpFieldLabel(context.tr('vet_reg_no')),
                       TextField(
                         controller: _vetLicenceController,
-                        decoration: const InputDecoration(
-                          hintText: "e.g. 1847",
-                          prefixIcon: Icon(Icons.badge_outlined),
-                          helperText: "Your Veterinary Council of Sri Lanka registration number",
+                        decoration: InputDecoration(
+                          hintText: context.tr('vet_reg_hint'),
+                          prefixIcon: const Icon(Icons.badge_outlined),
+                          helperText: context.tr('vet_reg_helper'),
                         ),
                       ),
                     ],
-                    const DpFieldLabel("Password"),
+                    DpFieldLabel(context.tr('password')),
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
-                        hintText: "Create a strong password",
+                        hintText: context.tr('strong_password_hint'),
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -414,20 +416,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      "At least 8 characters with uppercase, lowercase, a number and a special character (e.g. !@#)",
+                      context.tr('password_rule'),
                       style: TextStyle(fontSize: 12, color: dpMuted(context)),
                     ),
-                    const DpFieldLabel("Confirm Password"),
+                    DpFieldLabel(context.tr('confirm_password')),
                     TextField(
                       controller: _confirmPasswordController,
                       obscureText: _obscureConfirm,
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
-                        hintText: "Type the same password again",
+                        hintText: context.tr('confirm_password_hint'),
                         prefixIcon: const Icon(Icons.lock_reset),
                         errorText: _confirmPasswordController.text.isNotEmpty &&
                                 _confirmPasswordController.text != _passwordController.text
-                            ? "Passwords do not match"
+                            ? context.tr('passwords_no_match')
                             : null,
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -441,12 +443,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (_confirmPasswordController.text.isNotEmpty &&
                         _confirmPasswordController.text == _passwordController.text) ...[
                       const SizedBox(height: 6),
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.check_circle, size: 16, color: AppColors.confidenceGreen),
-                          SizedBox(width: 6),
-                          Text("Passwords match",
-                              style: TextStyle(
+                          const Icon(Icons.check_circle, size: 16, color: AppColors.confidenceGreen),
+                          const SizedBox(width: 6),
+                          Text(context.tr('passwords_match'),
+                              style: const TextStyle(
                                   fontSize: 12.5,
                                   color: AppColors.confidenceGreen,
                                   fontWeight: FontWeight.w700)),
@@ -473,7 +475,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Padding(
                         padding: const EdgeInsets.only(top: 12, bottom: 8),
                         child: Text(
-                          "I understand that DermPaw's AI predictions are advisory only and do not constitute a professional veterinary diagnosis.",
+                          context.tr('ai_consent'),
                           style: TextStyle(fontSize: 12.5, color: dpMuted(context), height: 1.35),
                         ),
                       ),
@@ -486,7 +488,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               DpErrorText(_errorMessage),
               ElevatedButton(
                 onPressed: (_isLoading || !_consentGiven) ? null : _handleRegister,
-                child: _isLoading ? dpButtonSpinner : const Text("Create Account"),
+                child: _isLoading ? dpButtonSpinner : Text(context.tr('create_account')),
               ),
               const SizedBox(height: 10),
               Row(
@@ -494,7 +496,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   Icon(Icons.mark_email_read_outlined, size: 16, color: dpMuted(context)),
                   const SizedBox(width: 6),
-                  Text("We'll email you a 4-digit code to verify",
+                  Text(context.tr('email_code_note'),
                       style: TextStyle(fontSize: 12.5, color: dpMuted(context))),
                 ],
               ),
@@ -608,7 +610,7 @@ class _VerifyEmailDialogState extends State<_VerifyEmailDialog> {
   Future<void> _verify() async {
     final code = _codeController.text.trim();
     if (code.length != 4) {
-      setState(() => _error = "Enter the 4-digit code");
+      setState(() => _error = context.tr('enter_4_digit'));
       return;
     }
     setState(() {
@@ -631,7 +633,7 @@ class _VerifyEmailDialogState extends State<_VerifyEmailDialog> {
         Navigator.pop(context, result);
       }
     } catch (e) {
-      if (mounted) setState(() => _error = "Could not connect to server");
+      if (mounted) setState(() => _error = context.tr('server_error'));
     } finally {
       if (mounted) setState(() => _isVerifying = false);
     }
@@ -648,13 +650,13 @@ class _VerifyEmailDialogState extends State<_VerifyEmailDialog> {
       if (!mounted) return;
       if (result["statusCode"] == 200) {
         _codeController.clear();
-        setState(() => _info = "A new code was sent. Check your inbox (and spam folder).");
+        setState(() => _info = context.tr('new_code_sent'));
         _startCountdown();
       } else {
-        setState(() => _error = result["body"]["error"] ?? "Could not resend code");
+        setState(() => _error = result["body"]["error"] ?? context.tr('err_resend'));
       }
     } catch (e) {
-      if (mounted) setState(() => _error = "Could not connect to server");
+      if (mounted) setState(() => _error = context.tr('server_error'));
     } finally {
       if (mounted) setState(() => _isResending = false);
     }
@@ -663,13 +665,13 @@ class _VerifyEmailDialogState extends State<_VerifyEmailDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("Verify your email"),
+      title: Text(context.tr('verify_email')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            "We sent a 4-digit code to\n${widget.email}",
+            context.tr('code_sent_to').replaceAll('{email}', widget.email),
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textGrey, fontSize: 13.5),
           ),
@@ -703,14 +705,16 @@ class _VerifyEmailDialogState extends State<_VerifyEmailDialog> {
           const SizedBox(height: 8),
           TextButton(
             onPressed: (_resendSeconds > 0 || _isResending) ? null : _resend,
-            child: Text(_resendSeconds > 0 ? "Resend code in ${_resendSeconds}s" : "Resend code"),
+            child: Text(_resendSeconds > 0
+                ? context.tr('resend_in').replaceAll('{n}', '$_resendSeconds')
+                : context.tr('resend_code')),
           ),
         ],
       ),
       actions: [
         TextButton(
           onPressed: _isVerifying ? null : () => Navigator.pop(context),
-          child: const Text("Cancel"),
+          child: Text(context.tr('cancel')),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(minimumSize: const Size(120, 44)),
@@ -721,7 +725,7 @@ class _VerifyEmailDialogState extends State<_VerifyEmailDialog> {
                   width: 18,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
-              : const Text("Verify"),
+              : Text(context.tr('verify')),
         ),
       ],
     );

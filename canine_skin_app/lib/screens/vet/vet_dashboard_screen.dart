@@ -15,6 +15,8 @@ import '../app_review/app_reviews_list_screen.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/dp_ui.dart';
 import '../../core/widgets/theme_toggle_button.dart';
+import '../../core/widgets/language_toggle_button.dart';
+import '../../core/localization/app_strings.dart';
 
 /// Veterinarian dashboard.
 /// Every card and button opens a real screen:
@@ -190,16 +192,11 @@ class _VetDashboardScreenState extends State<VetDashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
-        title: const Row(
-          children: [
-            DpIconTile(Icons.medical_services_outlined, size: 38),
-            SizedBox(width: 10),
-            Text("Vet Dashboard"),
-          ],
-        ),
+                title: Text(context.tr('vet_dashboard')),
         actions: [
           _buildBell(),
           const ThemeToggleButton(),
+          const LanguageToggleButton(),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             tooltip: "Logout",
